@@ -11,6 +11,7 @@
     </p>
 
     <p>
+        <a class="button" href="{% url 'admin:busstops_service_spreadsheet_import' service.id %}">Import stops and route via spreadsheet</a>
         <a class="button" href="{{ simple_template_download_url }}">Download simple XLSX template</a>
         <a class="button" href="{{ template_download_url }}">Download XLSX template</a>
         <a class="button" href="{{ export_download_url }}">Download current timetable XLSX</a>

@@ -37,7 +37,6 @@ from fleet.parsers.pdf_fleet_parser import TARGET_COLUMNS, parse_pdf
 from vehicles.models import Livery, Vehicle, VehicleFeature, VehicleType, vehicle_slug
 
 from . import models
-from . import views as busstops_views
 from .data_changes import apply_pending_change, reject_pending_change
 from .fleet_imports import (
     create_garage_for_operator as shared_create_garage_for_operator,
@@ -533,6 +532,16 @@ class MassEditTimetableForm(forms.Form):
             attrs={"accept": ".pdf,.xlsx,.csv,text/csv,application/vnd.ms-excel,application/pdf"}
         ),
         help_text="Upload a fleet PDF, completed .xlsx, or .csv file instead of pasting rows.",
+    )
+
+
+class SimpleSpreadsheetImportForm(forms.Form):
+    workbook = forms.FileField(
+        required=True,
+        widget=forms.ClearableFileInput(
+            attrs={"accept": ".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
+        ),
+        help_text="Upload a .xlsx file with 6 sheets: Weekdays/Saturdays/Sundays x Inbound/Outbound. Column A contains ATCO codes, columns B+ are trips.",
     )
 
 
@@ -5084,7 +5093,7 @@ class ServiceAdmin(GISModelAdmin):
         "modified_at",
         "timetable_data",
         "timetable_bulk_edit_link",
-        "route_editor_link",
+        "spreadsheet_import_link",
     ]
     list_editable = ["colour", "line_brand"]
     list_select_related = []
@@ -5245,17 +5254,6 @@ class ServiceAdmin(GISModelAdmin):
             rows,
         )
 
-    @admin.display(description="Route editor")
-    def route_editor_link(self, obj):
-        if not obj or not obj.pk:
-            return ""
-        url = reverse("admin:busstops_service_route_editor")
-        return format_html(
-            '<a class="button" href="{}?service={}">Open route editor</a>',
-            url,
-            obj.pk,
-        )
-
     @admin.display(description="Timetable bulk edit")
     def timetable_bulk_edit_link(self, obj):
         if not obj or not obj.pk:
@@ -5263,6 +5261,16 @@ class ServiceAdmin(GISModelAdmin):
         url = reverse("admin:busstops_service_mass_edit_timetable", args=(obj.pk,))
         return format_html(
             '<a class="button" href="{}">Open timetable workbook editor</a>',
+            url,
+        )
+
+    @admin.display(description="Spreadsheet import")
+    def spreadsheet_import_link(self, obj):
+        if not obj or not obj.pk:
+            return ""
+        url = reverse("admin:busstops_service_spreadsheet_import", args=(obj.pk,))
+        return format_html(
+            '<a class="button" href="{}">Import stops and route via spreadsheet</a>',
             url,
         )
 
@@ -5295,9 +5303,14 @@ class ServiceAdmin(GISModelAdmin):
                 name="busstops_service_mass_delete_timetable",
             ),
             path(
-                "tools/route-editor/",
-                self.admin_site.admin_view(self.route_editor_view),
-                name="busstops_service_route_editor",
+                "<path:object_id>/spreadsheet-import/",
+                self.admin_site.admin_view(self.spreadsheet_import_view),
+                name="busstops_service_spreadsheet_import",
+            ),
+            path(
+                "<path:object_id>/spreadsheet-import/template.xlsx",
+                self.admin_site.admin_view(self.spreadsheet_import_template_view),
+                name="busstops_service_spreadsheet_import_template",
             ),
         ]
         return custom_urls + urls
@@ -5980,7 +5993,7 @@ class ServiceAdmin(GISModelAdmin):
         if request.method == "POST":
             deleted_trips = Trip.objects.filter(route__service=service).count()
             deleted_routes = Route.objects.filter(service=service).count()
-            
+
             with transaction.atomic():
                 Trip.objects.filter(route__service=service).delete()
                 Route.objects.filter(service=service).delete()
@@ -6004,6 +6017,289 @@ class ServiceAdmin(GISModelAdmin):
         return TemplateResponse(
             request,
             "admin/busstops/service/delete_timetable.html",
+            context,
+        )
+
+    def spreadsheet_import_template_view(self, request, object_id):
+        if not request.user.is_superuser:
+            raise PermissionDenied
+        service = self.get_object(request, object_id)
+        if service is None:
+            raise PermissionDenied
+
+        workbook = self._build_spreadsheet_import_template()
+        stream = BytesIO()
+        workbook.save(stream)
+        response = HttpResponse(
+            stream.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response["Content-Disposition"] = (
+            f'attachment; filename="{service.slug}-spreadsheet-import-template.xlsx"'
+        )
+        return response
+
+    def _build_spreadsheet_import_template(self):
+        workbook = Workbook()
+
+        sheet_names = [
+            "Weekdays - Inbound",
+            "Saturdays - Inbound",
+            "Sundays - Inbound",
+            "Weekdays - Outbound",
+            "Saturdays - Outbound",
+            "Sundays - Outbound",
+        ]
+
+        header_font = Font(bold=True)
+
+        for sheet_name in sheet_names:
+            if sheet_name == sheet_names[0]:
+                worksheet = workbook.active
+                worksheet.title = sheet_name
+            else:
+                worksheet = workbook.create_sheet(sheet_name)
+
+            # Headers
+            worksheet.cell(row=1, column=1, value="ATCO Code")
+            worksheet.cell(row=1, column=1).font = header_font
+            worksheet.cell(row=1, column=2, value="Trip 1")
+            worksheet.cell(row=1, column=2).font = header_font
+            worksheet.cell(row=1, column=3, value="Trip 2")
+            worksheet.cell(row=1, column=3).font = header_font
+            worksheet.cell(row=1, column=4, value="Trip 3")
+            worksheet.cell(row=1, column=4).font = header_font
+
+            # Example data
+            worksheet.cell(row=2, column=1, value="Example: 0500CCITY160")
+            worksheet.cell(row=2, column=2, value="08:00")
+            worksheet.cell(row=2, column=3, value="08:30")
+            worksheet.cell(row=2, column=4, value="09:00")
+
+            worksheet.cell(row=3, column=1, value="Example: 0500CCITY161")
+            worksheet.cell(row=3, column=2, value="08:05")
+            worksheet.cell(row=3, column=3, value="08:35")
+            worksheet.cell(row=3, column=4, value="09:05")
+
+            worksheet.cell(row=4, column=1, value="Example: 0500CCITY162")
+            worksheet.cell(row=4, column=2, value="08:10")
+            worksheet.cell(row=4, column=3, value="08:40")
+            worksheet.cell(row=4, column=4, value="09:10")
+
+        instructions = workbook.create_sheet("Instructions")
+        instructions.append(["Spreadsheet Import Template", ""])
+        instructions.append(["", ""])
+        instructions.append(["Sheet Structure", "6 sheets total:"])
+        instructions.append(["", "Weekdays - Inbound"])
+        instructions.append(["", "Saturdays - Inbound"])
+        instructions.append(["", "Sundays - Inbound"])
+        instructions.append(["", "Weekdays - Outbound"])
+        instructions.append(["", "Saturdays - Outbound"])
+        instructions.append(["", "Sundays - Outbound"])
+        instructions.append(["", ""])
+        instructions.append(["Column A", "ATCO codes for stops (one per row)"])
+        instructions.append(["", "Enter the ATCO code for each stop in the route"])
+        instructions.append(["", "Must match existing stops in the database"])
+        instructions.append(["", ""])
+        instructions.append(["Columns B+", "Each column represents one trip/journey"])
+        instructions.append(["", "Enter departure times in HH:MM format"])
+        instructions.append(["", "Times can be left blank if a trip doesn't stop at a particular stop"])
+        instructions.append(["", "You can add as many trip columns as needed"])
+        instructions.append(["", ""])
+        instructions.append(["Time Format", "Use HH:MM format (e.g., 08:00, 23:45)"])
+        instructions.append(["", "24-hour format is required"])
+        instructions.append(["", ""])
+        instructions.append(["Notes", "Replace the example data with your actual ATCO codes and times"])
+        instructions.append(["", "Each sheet creates trips for that day type and direction"])
+        instructions.append(["", "The system will automatically create calendars and routes"])
+
+        return workbook
+
+    def _parse_spreadsheet_import(self, service, workbook):
+        errors = []
+        created_trips = 0
+        created_routes = 0
+
+        sheet_mapping = {
+            "Weekdays - Inbound": ("weekdays", True),
+            "Saturdays - Inbound": ("saturdays", True),
+            "Sundays - Inbound": ("sundays", True),
+            "Weekdays - Outbound": ("weekdays", False),
+            "Saturdays - Outbound": ("saturdays", False),
+            "Sundays - Outbound": ("sundays", False),
+        }
+
+        # Get or create calendars
+        calendars = {}
+        for day_type in ["weekdays", "saturdays", "sundays"]:
+            calendar_name = f"{day_type.capitalize()} for {service.line_name or service.slug}"
+            calendar, created = Calendar.objects.get_or_create(
+                name=calendar_name,
+                defaults={
+                    "monday": day_type == "weekdays",
+                    "tuesday": day_type == "weekdays",
+                    "wednesday": day_type == "weekdays",
+                    "thursday": day_type == "weekdays",
+                    "friday": day_type == "weekdays",
+                    "saturday": day_type == "saturdays",
+                    "sunday": day_type == "sundays",
+                }
+            )
+            calendars[day_type] = calendar
+
+        # Get or create route
+        source = service.source
+        if source is None:
+            source, _ = models.DataSource.objects.get_or_create(name="Manual timetable")
+
+        route, created = Route.objects.get_or_create(
+            source=source,
+            code=f"manual-service-{service.pk}",
+            defaults={
+                "service": service,
+                "service_code": service.service_code or f"manual-service-{service.pk}",
+                "line_name": service.line_name or "",
+                "description": service.description or "",
+            }
+        )
+        if created:
+            created_routes += 1
+
+        with transaction.atomic():
+            for sheet_name in workbook.sheetnames:
+                if sheet_name not in sheet_mapping:
+                    continue
+
+                day_type, inbound = sheet_mapping[sheet_name]
+                calendar = calendars[day_type]
+                worksheet = workbook[sheet_name]
+
+                # Parse stops from column A
+                stops = []
+                for row in range(2, worksheet.max_row + 1):
+                    atco_code = worksheet.cell(row=row, column=1).value
+                    if atco_code and str(atco_code).strip():
+                        atco_code = str(atco_code).strip()
+                        stop = models.StopPoint.objects.filter(atco_code=atco_code).first()
+                        if stop:
+                            stops.append((row, stop))
+                        else:
+                            errors.append(f"Unknown ATCO code '{atco_code}' in {sheet_name} row {row}")
+
+                if not stops:
+                    continue
+
+                # Parse trips from columns B+
+                for col in range(2, worksheet.max_column + 1):
+                    trip_times = []
+                    trip_name = worksheet.cell(row=1, column=col).value or f"Trip {col - 1}"
+
+                    for row, stop in stops:
+                        time_value = worksheet.cell(row=row, column=col).value
+                        if time_value:
+                            time_str = str(time_value).strip()
+                            try:
+                                time_obj = self._parse_timetable_time(time_str)
+                                trip_times.append((stop, time_obj))
+                            except ValueError as exc:
+                                errors.append(f"Invalid time '{time_str}' in {sheet_name} row {row} column {col}: {exc}")
+
+                    if not trip_times:
+                        continue
+
+                    # Sort by time
+                    trip_times.sort(key=lambda x: x[1])
+
+                    # Create trip
+                    trip = Trip.objects.create(
+                        route=route,
+                        calendar=calendar,
+                        inbound=inbound,
+                        start=trip_times[0][1],
+                        end=trip_times[-1][1],
+                    )
+
+                    # Create stop times
+                    stop_time_objects = []
+                    for sequence, (stop, time_obj) in enumerate(trip_times, start=1):
+                        stop_time_objects.append(
+                            StopTime(
+                                trip=trip,
+                                stop=stop,
+                                stop_code=stop.atco_code,
+                                arrival=time_obj,
+                                departure=time_obj,
+                                sequence=sequence,
+                                pick_up=True,
+                                set_down=True,
+                                timing_status="PTP",
+                            )
+                        )
+
+                    StopTime.objects.bulk_create(stop_time_objects)
+                    created_trips += 1
+
+        service.do_stop_usages()
+        service.update_geometry()
+        self._touch_service(service)
+
+        return {
+            "created_trips": created_trips,
+            "created_routes": created_routes,
+            "errors": errors,
+        }
+
+    def spreadsheet_import_view(self, request, object_id):
+        if not request.user.is_superuser:
+            raise PermissionDenied
+
+        service = self.get_object(request, object_id)
+        if service is None:
+            raise PermissionDenied
+
+        result = None
+        if request.method == "POST":
+            form = SimpleSpreadsheetImportForm(request.POST, request.FILES)
+            if form.is_valid():
+                workbook = form.cleaned_data.get("workbook")
+                try:
+                    loaded_workbook = load_workbook(workbook, data_only=True)
+                    result = self._parse_spreadsheet_import(service, loaded_workbook)
+
+                    if result["errors"]:
+                        self.message_user(
+                            request,
+                            f"Import completed with {len(result['errors'])} errors. Created {result['created_trips']} trips, {result['created_routes']} routes.",
+                            level=messages.WARNING,
+                        )
+                    else:
+                        self.message_user(
+                            request,
+                            f"Import successful! Created {result['created_trips']} trips, {result['created_routes']} routes.",
+                            level=messages.SUCCESS,
+                        )
+                except Exception as exc:
+                    form.add_error("workbook", f"Error processing workbook: {exc}")
+        else:
+            form = SimpleSpreadsheetImportForm()
+
+        context = {
+            **self.admin_site.each_context(request),
+            "opts": self.model._meta,
+            "original": service,
+            "service": service,
+            "title": f"Import stops and route via spreadsheet for {service}",
+            "form": form,
+            "result": result,
+            "template_download_url": reverse(
+                "admin:busstops_service_spreadsheet_import_template",
+                args=(service.pk,),
+            ),
+        }
+
+        return TemplateResponse(
+            request,
+            "admin/busstops/service/spreadsheet_import.html",
             context,
         )
 
@@ -6500,490 +6796,6 @@ class ServiceAdmin(GISModelAdmin):
             "admin/busstops/service/mass_timetable.html",
             context,
         )
-
-    def route_editor_view(self, request):
-        if not request.user.is_staff:
-            raise PermissionDenied
-
-        query = (request.GET.get("q") or "").strip()
-        service_id = request.GET.get("service") or request.POST.get("service")
-        inbound = request.GET.get("inbound") or request.POST.get("inbound")
-        inbound = inbound == "1"
-        service = None
-        if service_id and service_id.isdigit():
-            service = models.Service.objects.filter(pk=service_id).first()
-
-        if request.method == "POST" and service:
-            action = request.POST.get("action") or "save_geometry"
-
-            if action == "save_stops":
-                raw_stops = (
-                    request.POST.get("stops_selection")
-                    or request.POST.get("stop_codes")
-                    or ""
-                ).strip()
-                stop_ids = []
-                seen = set()
-                for stop_id in re.split(r"[\s,]+", raw_stops):
-                    stop_id = stop_id.strip()
-                    if not stop_id or stop_id in seen:
-                        continue
-                    seen.add(stop_id)
-                    stop_ids.append(stop_id)
-
-                if not stop_ids:
-                    self.message_user(
-                        request,
-                        "Add at least one stop code to create the stop chain.",
-                        level=messages.ERROR,
-                    )
-                    return TemplateResponse(
-                        request,
-                        "admin/busstops/service/route_editor.html",
-                        self.admin_site.each_context(request)
-                        | self._route_editor_context(query, service, raw_stops, "", inbound),
-                    )
-
-                stops = models.StopPoint.objects.in_bulk(stop_ids)
-                missing = [stop_id for stop_id in stop_ids if stop_id not in stops]
-                if missing:
-                    self.message_user(
-                        request,
-                        f"Unknown stop code(s): {', '.join(missing[:10])}",
-                        level=messages.ERROR,
-                    )
-                    return TemplateResponse(
-                        request,
-                        "admin/busstops/service/route_editor.html",
-                        self.admin_site.each_context(request)
-                        | self._route_editor_context(query, service, raw_stops, "", inbound),
-                    )
-
-                line_name = service.get_line_name() or service.line_name or ""
-                with transaction.atomic():
-                    service.stopusage_set.filter(inbound=inbound).delete()
-                    models.StopUsage.objects.bulk_create(
-                        [
-                            models.StopUsage(
-                                service=service,
-                                stop_id=stop_id,
-                                order=index,
-                                timing_point=True,
-                                inbound=inbound,
-                                line_name=line_name,
-                            )
-                            for index, stop_id in enumerate(stop_ids)
-                        ]
-                    )
-                    service.update_geometry()
-                    self._touch_service(service)
-
-                direction = "inbound" if inbound else "outbound"
-                self.message_user(
-                    request,
-                    f"Saved {len(stop_ids)} stops for the {direction} chain.",
-                    level=messages.SUCCESS,
-                )
-
-            elif action == "generate_geometry":
-                # Parse waypoints from form data
-                waypoints_text = request.POST.get("waypoints", "").strip()
-                waypoints = []
-                if waypoints_text:
-                    for line in waypoints_text.splitlines():
-                        line = line.strip()
-                        if not line:
-                            continue
-                        parts = line.split(",")
-                        if len(parts) == 2:
-                            try:
-                                lon, lat = float(parts[0]), float(parts[1])
-                                waypoints.append((lon, lat))
-                            except ValueError:
-                                continue
-
-                result = self._generate_route_editor_geometry(service, waypoints, inbound)
-                if result.get("error"):
-                    self.message_user(
-                        request,
-                        result["error"],
-                        level=messages.ERROR,
-                    )
-                else:
-                    self.message_user(
-                        request,
-                        (
-                            "Generated snapped route geometry. "
-                            f"Updated {result['updated']}, created {result['created']}, "
-                            f"skipped {result['skipped']}."
-                        ),
-                        level=messages.SUCCESS,
-                    )
-
-            segments = busstops_views._route_editor_segments(service)
-            existing_links = {
-                (route_link.from_stop_id, route_link.to_stop_id): route_link
-                for route_link in service.routelink_set.all()
-            }
-            updated = 0
-            created = 0
-            deleted = 0
-
-            if action == "save_geometry":
-                with transaction.atomic():
-                    for segment in segments:
-                        field_name = f"segment__{segment['from_stop_id']}__{segment['to_stop_id']}"
-                        raw_value = (request.POST.get(field_name) or "").strip()
-                        pair = (segment["from_stop_id"], segment["to_stop_id"])
-
-                        if not raw_value:
-                            route_link = existing_links.get(pair)
-                            if route_link:
-                                route_link.delete()
-                                deleted += 1
-                            continue
-
-                        coordinates = []
-                        for line in raw_value.splitlines():
-                            line = line.strip()
-                            if not line:
-                                continue
-                            parts = [part.strip() for part in line.split(",")]
-                            if len(parts) != 2:
-                                self.message_user(
-                                    request,
-                                    f"Invalid coordinate line for {segment['from_stop_name']} -> {segment['to_stop_name']}: {line}",
-                                    level=messages.ERROR,
-                                )
-                                return TemplateResponse(
-                                    request,
-                                    "admin/busstops/service/route_editor.html",
-                                    self.admin_site.each_context(request)
-                                    | self._route_editor_context(query, service, "", "", inbound),
-                                )
-                            try:
-                                coordinates.append((float(parts[0]), float(parts[1])))
-                            except ValueError:
-                                self.message_user(
-                                    request,
-                                    f"Invalid number for {segment['from_stop_name']} -> {segment['to_stop_name']}: {line}",
-                                    level=messages.ERROR,
-                                )
-                                return TemplateResponse(
-                                    request,
-                                    "admin/busstops/service/route_editor.html",
-                                    self.admin_site.each_context(request)
-                                    | self._route_editor_context(query, service, "", "", inbound),
-                                )
-
-                        if len(coordinates) < 2:
-                            self.message_user(
-                                request,
-                                f"{segment['from_stop_name']} -> {segment['to_stop_name']} needs at least two points.",
-                                level=messages.ERROR,
-                            )
-                            return TemplateResponse(
-                                request,
-                                "admin/busstops/service/route_editor.html",
-                                self.admin_site.each_context(request)
-                                | self._route_editor_context(query, service),
-                            )
-
-                        geometry = LineString(coordinates, srid=4326)
-                        route_link = existing_links.get(pair)
-                        if route_link:
-                            route_link.geometry = geometry
-                            route_link.override = True
-                            route_link.save(update_fields=["geometry", "override"])
-                            updated += 1
-                        else:
-                            RouteLink.objects.create(
-                                service=service,
-                                from_stop_id=segment["from_stop_id"],
-                                to_stop_id=segment["to_stop_id"],
-                                geometry=geometry,
-                                override=True,
-                            )
-                            created += 1
-
-                self.message_user(
-                    request,
-                    f"Saved route geometry. Updated {updated}, created {created}, deleted {deleted}.",
-                    level=messages.SUCCESS,
-                )
-                self._touch_service(service)
-
-        return TemplateResponse(
-            request,
-            "admin/busstops/service/route_editor.html",
-            self.admin_site.each_context(request)
-            | self._route_editor_context(query, service, "", "", inbound),
-        )
-
-    def _generate_route_editor_geometry(self, service, waypoints=None, inbound=False):
-        stop_usages = list(
-            service.stopusage_set.filter(inbound=inbound, stop__latlong__isnull=False)
-            .select_related("stop")
-            .order_by("order", "id")
-        )
-        if len(stop_usages) < 2:
-            return {"error": "Add at least two mapped stops before generating route geometry."}
-
-        session = requests.Session()
-        existing_links = {
-            (route_link.from_stop_id, route_link.to_stop_id): route_link
-            for route_link in service.routelink_set.all()
-        }
-        created = 0
-        updated = 0
-        skipped = 0
-
-        with transaction.atomic():
-            for from_usage, to_usage in pairwise(stop_usages):
-                try:
-                    line_substring = self._route_editor_segment_geometry(
-                        session, from_usage, to_usage, waypoints
-                    )
-                except requests.RequestException as exc:
-                    return {"error": f"Could not generate snapped geometry: {exc}"}
-                except ValueError as exc:
-                    return {"error": str(exc)}
-                except (KeyError, IndexError, TypeError):
-                    skipped += 1
-                    continue
-
-                from_point = ShapelyPoint(from_usage.stop.latlong.coords)
-                to_point = ShapelyPoint(to_usage.stop.latlong.coords)
-                if (
-                    line_substring.geom_type != "LineString"
-                    or len(line_substring.coords) < 2
-                    or from_point.distance(
-                        ShapelyPoint(line_substring.coords[0])
-                    ) > 0.01
-                    or to_point.distance(
-                        ShapelyPoint(line_substring.coords[-1])
-                    ) > 0.01
-                ):
-                    skipped += 1
-                    continue
-
-                pair = (from_usage.stop_id, to_usage.stop_id)
-                route_link = existing_links.get(pair)
-                if route_link:
-                    route_link.geometry = line_substring.wkt
-                    route_link.override = True
-                    route_link.save(update_fields=["geometry", "override"])
-                    updated += 1
-                else:
-                    RouteLink.objects.create(
-                        service=service,
-                        from_stop_id=from_usage.stop_id,
-                        to_stop_id=to_usage.stop_id,
-                        geometry=line_substring.wkt,
-                        override=True,
-                    )
-                    created += 1
-
-        service.update_geometry()
-        self._touch_service(service)
-
-        return {
-            "created": created,
-            "updated": updated,
-            "skipped": skipped,
-        }
-
-    def _route_editor_segment_geometry(self, session, from_usage, to_usage, waypoints=None):
-        router = getattr(settings, "ROUTE_EDITOR_ROUTER", "osrm")
-        if router == "stadia":
-            return self._route_editor_segment_geometry_stadia(
-                session, from_usage, to_usage
-            )
-        return self._route_editor_segment_geometry_osrm(session, from_usage, to_usage, waypoints)
-
-    def _route_editor_segment_geometry_osrm(self, session, from_usage, to_usage, waypoints=None):
-        base_url = getattr(settings, "ROUTE_EDITOR_OSRM_URL", "").strip().rstrip("/")
-        if not base_url:
-            raise ValueError("ROUTE_EDITOR_OSRM_URL is not configured on this environment.")
-
-        coordinates = (
-            f"{from_usage.stop.latlong.x},{from_usage.stop.latlong.y};"
-        )
-        
-        # Add waypoints if provided (for routing guidance only)
-        if waypoints:
-            for waypoint in waypoints:
-                coordinates += f"{waypoint[0]},{waypoint[1]};"
-        
-        coordinates += f"{to_usage.stop.latlong.x},{to_usage.stop.latlong.y}"
-        
-        response = session.get(
-            f"{base_url}/route/v1/driving/{coordinates}",
-            params={
-                "overview": "full",
-                "geometries": "geojson",
-                "steps": "false",
-                "continue_straight": "true",
-            },
-            timeout=30,
-        )
-        response.raise_for_status()
-        payload = response.json()
-
-        route = (payload.get("routes") or [None])[0]
-        geometry = (route or {}).get("geometry") or {}
-        route_coordinates = geometry.get("coordinates") or []
-        if len(route_coordinates) < 2:
-            raise ValueError("Local router did not return a usable route geometry.")
-
-        return ShapelyLineString(route_coordinates)
-
-    def _route_editor_segment_geometry_stadia(self, session, from_usage, to_usage):
-        api_key = getattr(settings, "STADIA_MAPS_API_KEY", "")
-        if not api_key:
-            raise ValueError("STADIA_MAPS_API_KEY is not configured on this environment.")
-
-        import polyline
-
-        response = session.post(
-            "https://api.stadiamaps.com/route/v1",
-            params={"api_key": api_key},
-            json={
-                "locations": [
-                    {
-                        "lat": from_usage.stop.latlong.y,
-                        "lon": from_usage.stop.latlong.x,
-                        "type": "break",
-                    },
-                    {
-                        "lat": to_usage.stop.latlong.y,
-                        "lon": to_usage.stop.latlong.x,
-                        "type": "break",
-                    },
-                ],
-                "costing": "bus",
-            },
-            timeout=30,
-        )
-        response.raise_for_status()
-        payload = response.json()
-        leg = payload["trip"]["legs"][0]
-        return ShapelyLineString(
-            [(lon, lat) for lat, lon in polyline.decode(leg["shape"], precision=6)]
-        )
-
-    def _route_editor_context(self, query, service, stop_codes_override=None, waypoints_text="", inbound=False):
-        results = []
-        if query:
-            results = list(
-                models.Service.objects.with_line_names()
-                .filter(
-                    Q(line_name__icontains=query)
-                    | Q(description__icontains=query)
-                    | Q(service_code__icontains=query)
-                    | Q(line_brand__icontains=query)
-                    | Q(operator__name__icontains=query)
-                )
-                .distinct()
-                .order_by("line_name", "description")[:25]
-            )
-
-        segments = []
-        stop_codes_text = stop_codes_override
-        selected_stop_rows = []
-        preview_stops = []
-        if service:
-            if stop_codes_text is None:
-                stop_usages = list(
-                    service.stopusage_set.filter(inbound=inbound)
-                    .select_related("stop", "stop__locality")
-                    .order_by("order", "id")
-                )
-                stop_codes_text = "\n".join(stop_usage.stop_id for stop_usage in stop_usages)
-                selected_stop_rows = [
-                    {
-                        "stop_id": stop_usage.stop_id,
-                        "stop_name": (
-                            stop_usage.stop.get_qualified_name()
-                            if stop_usage.stop_id and stop_usage.stop
-                            else stop_usage.stop_id
-                        ),
-                    }
-                    for stop_usage in stop_usages
-                ]
-                preview_stops = [
-                    {
-                        "stop_id": stop_usage.stop_id,
-                        "stop_name": (
-                            stop_usage.stop.get_qualified_name()
-                            if stop_usage.stop_id and stop_usage.stop
-                            else stop_usage.stop_id
-                        ),
-                        "coordinates": list(stop_usage.stop.latlong.coords)
-                        if stop_usage.stop and stop_usage.stop.latlong
-                        else None,
-                    }
-                    for stop_usage in stop_usages
-                ]
-            elif stop_codes_text:
-                stop_ids = [
-                    item.strip()
-                    for item in re.split(r"[\s,]+", stop_codes_text)
-                    if item.strip()
-                ]
-                stops = models.StopPoint.objects.filter(atco_code__in=stop_ids).select_related(
-                    "locality"
-                )
-                stops_by_id = {stop.atco_code: stop for stop in stops}
-                selected_stop_rows = [
-                    {
-                        "stop_id": stop_id,
-                        "stop_name": (
-                            stops_by_id[stop_id].get_qualified_name()
-                            if stop_id in stops_by_id
-                            else stop_id
-                        ),
-                    }
-                    for stop_id in stop_ids
-                ]
-                preview_stops = [
-                    {
-                        "stop_id": stop_id,
-                        "stop_name": (
-                            stops_by_id[stop_id].get_qualified_name()
-                            if stop_id in stops_by_id
-                            else stop_id
-                        ),
-                        "coordinates": list(stops_by_id[stop_id].latlong.coords)
-                        if stop_id in stops_by_id and stops_by_id[stop_id].latlong
-                        else None,
-                    }
-                    for stop_id in stop_ids
-                ]
-            for segment in busstops_views._route_editor_segments(service):
-                segment = segment.copy()
-                segment["field_name"] = (
-                    f"segment__{segment['from_stop_id']}__{segment['to_stop_id']}"
-                )
-                segment["coordinates_text"] = "\n".join(
-                    f"{lng:.6f}, {lat:.6f}" for lng, lat in segment["coordinates"]
-                )
-                segments.append(segment)
-
-        return {
-            "title": "Route editor",
-            "search_query": query,
-            "results": results,
-            "service": service,
-            "segments": segments,
-            "stop_codes_text": stop_codes_text or "",
-            "selected_stop_ids_csv": ",".join(
-                row["stop_id"] for row in selected_stop_rows if row.get("stop_id")
-            ),
-            "selected_stop_rows": selected_stop_rows,
-            "preview_stops": preview_stops,
-            "waypoints_text": waypoints_text,
-        }
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)

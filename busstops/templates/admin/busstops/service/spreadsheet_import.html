@@ -1,0 +1,62 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<div id="content-main">
+    <h1>{{ title }}</h1>
+
+    <p>
+        <a href="{% url 'admin:busstops_service_change' service.pk %}">Back to service</a>
+        |
+        <a href="{{ service.get_absolute_url }}" target="_blank" rel="noopener">Open public timetable</a>
+    </p>
+
+    <p>
+        <a class="button" href="{{ template_download_url }}">Download spreadsheet template</a>
+    </p>
+
+    <p>
+        Import stops and route data using a spreadsheet with 6 sheets:
+    </p>
+    <ul>
+        <li>Weekdays - Inbound</li>
+        <li>Saturdays - Inbound</li>
+        <li>Sundays - Inbound</li>
+        <li>Weekdays - Outbound</li>
+        <li>Saturdays - Outbound</li>
+        <li>Sundays - Outbound</li>
+    </ul>
+
+    <p>
+        <strong>Format:</strong> Column A contains ATCO codes for stops. Columns B and onwards represent individual trips/journeys with times in HH:MM format.
+    </p>
+
+    <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        <div class="form-row">
+            {{ form.workbook.errors }}
+            {{ form.workbook.label_tag }}
+            {{ form.workbook }}
+            {% if form.workbook.help_text %}<p class="help">{{ form.workbook.help_text }}</p>{% endif %}
+        </div>
+        <div class="submit-row">
+            <button type="submit" class="default">Import spreadsheet</button>
+        </div>
+    </form>
+
+    {% if result %}
+        <h2>Import Results</h2>
+        <p>
+            Created {{ result.created_trips }} trips, {{ result.created_routes }} routes.
+        </p>
+        {% if result.errors %}
+            <h3>Errors</h3>
+            <ul>
+                {% for error in result.errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}
