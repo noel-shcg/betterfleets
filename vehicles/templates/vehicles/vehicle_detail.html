@@ -232,13 +232,13 @@
 
         @media (max-width: 480px) {
             .vehicle-hero {
-                padding-top: 150px;
+                padding-top: 250px;
             }
             .reg-plate {
                 font-size: 1.35rem;
             }
             .vehicle-photo {
-                width: 100px;
+                width: 200px;
             }
             .vehicle-photo-caption {
                 font-size: 0.7rem;
@@ -257,7 +257,7 @@
             border-radius: 0.6rem;
             overflow: hidden;
             background: var(--brand-color);
-            width: 120px;
+            width: 240px;
             max-width: 100%;
         }
 
@@ -282,8 +282,15 @@
             pointer-events: none;
         }
 
-        .vehicle-photo:hover .vehicle-photo-caption {
+        .vehicle-photo:hover .vehicle-photo-caption,
+        .vehicle-photo a:hover .vehicle-photo-caption {
             opacity: 1;
+        }
+
+        .vehicle-photo a {
+            position: relative;
+            display: block;
+            text-decoration: none;
         }
 
         .vehicle-photo-caption a {
@@ -314,16 +321,32 @@
         {% with photos=vehicle.photo_set.all %}
         {% if photos %}
             <div class="vehicle-photo">
-                <img src="{{ photos.0.get_display_url }}" alt="{{ vehicle }}" loading="lazy">
-                {% if photos.0.caption or photos.0.credit %}
-                    <div class="vehicle-photo-caption">
-                        {% if photos.0.caption %}
-                            <div class="vehicle-photo__title">{{ photos.0.caption }}</div>
+                {% if photos.0.flickr_url %}
+                    <a href="{{ photos.0.flickr_url }}" target="_blank" rel="noopener">
+                        <img src="{{ photos.0.get_display_url }}" alt="{{ vehicle }}" loading="lazy">
+                        {% if photos.0.caption or photos.0.credit %}
+                            <div class="vehicle-photo-caption">
+                                {% if photos.0.caption %}
+                                    <div class="vehicle-photo__title">{{ photos.0.caption }}</div>
+                                {% endif %}
+                                {% if photos.0.credit %}
+                                    <div class="vehicle-photo__author">by {{ photos.0.credit }}</div>
+                                {% endif %}
+                            </div>
                         {% endif %}
-                        {% if photos.0.credit %}
-                            <div class="vehicle-photo__author">by {{ photos.0.credit }}</div>
-                        {% endif %}
-                    </div>
+                    </a>
+                {% else %}
+                    <img src="{{ photos.0.get_display_url }}" alt="{{ vehicle }}" loading="lazy">
+                    {% if photos.0.caption or photos.0.credit %}
+                        <div class="vehicle-photo-caption">
+                            {% if photos.0.caption %}
+                                <div class="vehicle-photo__title">{{ photos.0.caption }}</div>
+                            {% endif %}
+                            {% if photos.0.credit %}
+                                <div class="vehicle-photo__author">by {{ photos.0.credit }}</div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
                 {% endif %}
             </div>
         {% endif %}
@@ -415,17 +438,33 @@
             <h2 style="font-size: 1rem; margin-bottom: 0.75rem; opacity: 0.7;">More photos</h2>
             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
                 {% for photo in photos %}{% if not forloop.first %}
-                    <div class="vehicle-photo" style="width: 80px; margin: 0; position: relative;">
-                        <img src="{{ photo.get_display_url }}" alt="" loading="lazy">
-                        {% if photo.caption or photo.credit %}
-                            <div class="vehicle-photo-caption">
-                                {% if photo.caption %}
-                                    <div class="vehicle-photo__title">{{ photo.caption }}</div>
+                    <div class="vehicle-photo" style="width: 160px; margin: 0; position: relative;">
+                        {% if photo.flickr_url %}
+                            <a href="{{ photo.flickr_url }}" target="_blank" rel="noopener">
+                                <img src="{{ photo.get_display_url }}" alt="" loading="lazy">
+                                {% if photo.caption or photo.credit %}
+                                    <div class="vehicle-photo-caption">
+                                        {% if photo.caption %}
+                                            <div class="vehicle-photo__title">{{ photo.caption }}</div>
+                                        {% endif %}
+                                        {% if photo.credit %}
+                                            <div class="vehicle-photo__author">by {{ photo.credit }}</div>
+                                        {% endif %}
+                                    </div>
                                 {% endif %}
-                                {% if photo.credit %}
-                                    <div class="vehicle-photo__author">by {{ photo.credit }}</div>
-                                {% endif %}
-                            </div>
+                            </a>
+                        {% else %}
+                            <img src="{{ photo.get_display_url }}" alt="" loading="lazy">
+                            {% if photo.caption or photo.credit %}
+                                <div class="vehicle-photo-caption">
+                                    {% if photo.caption %}
+                                        <div class="vehicle-photo__title">{{ photo.caption }}</div>
+                                    {% endif %}
+                                    {% if photo.credit %}
+                                        <div class="vehicle-photo__author">by {{ photo.credit }}</div>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
                         {% endif %}
                     </div>
                 {% endif %}{% endfor %}
