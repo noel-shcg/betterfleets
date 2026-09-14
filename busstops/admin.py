@@ -3863,18 +3863,18 @@ vehicle.garage.name if vehicle.garage else "",
                     colour = values.pop("colour")
                     # Handle colour: can be ServiceColour object, hex string, or None
                     if isinstance(colour, models.ServiceColour):
-                        colour_value = colour.background if colour else ""
+                        colour_value = colour.background if colour else None
                     elif isinstance(colour, str):
                         # Ensure hex code starts with # and is valid
                         if colour:
                             colour_value = colour if colour.startswith("#") else f"#{colour}"
                             # Validate hex format
                             if not (len(colour_value) == 7 and colour_value.startswith("#")):
-                                colour_value = ""
+                                colour_value = None
                         else:
-                            colour_value = ""
+                            colour_value = None
                     else:
-                        colour_value = ""
+                        colour_value = None
                     
                     if service is None:
                         service = models.Service.objects.create(**values, colour=colour_value)
@@ -6132,17 +6132,18 @@ class ServiceAdmin(GISModelAdmin):
         # Get or create calendars
         calendars = {}
         for day_type in ["weekdays", "saturdays", "sundays"]:
-            calendar_name = f"{day_type.capitalize()} for {service.line_name or service.slug}"
+            calendar_summary = f"{day_type.capitalize()} for {service.line_name or service.slug}"
             calendar, created = Calendar.objects.get_or_create(
-                name=calendar_name,
+                summary=calendar_summary,
+                start_date=timezone.now().date(),
                 defaults={
-                    "monday": day_type == "weekdays",
-                    "tuesday": day_type == "weekdays",
-                    "wednesday": day_type == "weekdays",
-                    "thursday": day_type == "weekdays",
-                    "friday": day_type == "weekdays",
-                    "saturday": day_type == "saturdays",
-                    "sunday": day_type == "sundays",
+                    "mon": day_type == "weekdays",
+                    "tue": day_type == "weekdays",
+                    "wed": day_type == "weekdays",
+                    "thu": day_type == "weekdays",
+                    "fri": day_type == "weekdays",
+                    "sat": day_type == "saturdays",
+                    "sun": day_type == "sundays",
                 }
             )
             calendars[day_type] = calendar
