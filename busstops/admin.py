@@ -5796,14 +5796,17 @@ class ServiceAdmin(GISModelAdmin):
         text = (value or "").strip()
         if not text:
             return None
-        match = re.fullmatch(r"(?P<hours>\d{1,3}):(?P<minutes>\d{2})", text)
+        match = re.fullmatch(r"(?P<hours>\d{1,3}):(?P<minutes>\d{2})(?::(?P<seconds>\d{2}))?", text)
         if not match:
-            raise ValueError(f"Invalid time '{text}'. Use HH:MM.")
+            raise ValueError(f"Invalid time '{text}'. Use HH:MM or HH:MM:SS.")
         hours = int(match.group("hours"))
         minutes = int(match.group("minutes"))
+        seconds = int(match.group("seconds")) if match.group("seconds") else 0
         if minutes >= 60:
             raise ValueError(f"Invalid time '{text}'. Minutes must be below 60.")
-        return timedelta(hours=hours, minutes=minutes)
+        if seconds >= 60:
+            raise ValueError(f"Invalid time '{text}'. Seconds must be below 60.")
+        return timedelta(hours=hours, minutes=minutes, seconds=seconds)
 
     @staticmethod
     def _format_timetable_time(value):
