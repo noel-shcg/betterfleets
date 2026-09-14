@@ -17,12 +17,6 @@
     @include meta.load-css('print');
 }
 
-@media (min-width: 970px) {
-    .narrow .ad-wrapper {
-        margin: 1em -121px 10px; // 970px
-    }
-}
-
 .dark-mode {
     #closeBox circle {
         fill: #fff!important;

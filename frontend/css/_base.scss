@@ -829,10 +829,6 @@ table {
     display: block;
 }
 
-.ad-wrapper + #map .service-map {
-    margin-top: 90px;
-}
-
 .sorry {  // "Loading..." or "Sorry no buses tracking"
     display: flex;
     height: 100%;
@@ -1574,30 +1570,6 @@ figcaption {
     --figcaption-fg: #fff;
 }
 
-.ad-wrapper {
-    text-align: center;
-    margin: 1em 0 10px;
-    min-height: 120px;
-
-    iframe {
-        vertical-align: bottom;
-    }
-}
-
-@media (min-height: 480px) {
-    .ad-wrapper {
-        position: sticky;
-        top: 0;
-        pointer-events: none;
-        z-index: 9999;
-
-        iframe {
-            background: var(--background-color);
-            pointer-events: auto;
-        }
-    }
-}
-
 #content {
     margin-bottom: 1.5em;
 }
@@ -1713,20 +1685,6 @@ footer {
         a {
             padding: 1.2em .25em;
         }
-    }
-}
-
-.no-ads {
-    .service-map {
-        margin-top: 0;
-    }
-
-    footer {
-        margin-bottom: 0;
-    }
-
-    .ad-wrapper {
-        display: none;
     }
 }
 
