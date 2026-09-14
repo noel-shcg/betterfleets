@@ -145,15 +145,7 @@
 
 {% include 'includes/operator_tabs.html' with active_operator_tab=active_tab services_count=services|length event_services_count=event_services_count liveries_count=liveries_count %}
 
-<div class="ad-wrapper">
-    <div id="AFM_inContentTop_ad"></div>
-</div>
-
 {% include 'situations.html' %}
-
-{% if request.user.is_authenticated %}
-    <p><a class="button" href="{% url 'request_new_vehicle' object.slug %}">Request a new vehicle</a></p>
-{% endif %}
 
 {% if active_tab == 'blocks' %}
     <form class="timetable-date" method="GET">
