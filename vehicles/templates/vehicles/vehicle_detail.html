@@ -123,10 +123,8 @@
 
         /* ── Vehicle hero card ────────────────────────────────────────── */
         .vehicle-hero {
-            display: flex;
-            gap: 1.25rem;
+            position: relative;
             margin: 1rem 0 1.5rem;
-            align-items: flex-start;
         }
 
         .vehicle-header-row {
@@ -135,11 +133,6 @@
             gap: 1rem;
             flex-wrap: wrap;
             margin-bottom: 0.6rem;
-        }
-
-        .vehicle-hero__info {
-            flex: 1 1 0;
-            min-width: 0;
         }
 
         /* ── Registration plate ───────────────────────────────────────── */
@@ -239,31 +232,33 @@
 
         @media (max-width: 480px) {
             .vehicle-hero {
-                flex-direction: column;
+                padding-top: 150px;
             }
             .reg-plate {
                 font-size: 1.35rem;
             }
             .vehicle-photo {
-                width: 100%;
-                margin: 1rem 0 0 0;
+                width: 100px;
             }
             .vehicle-photo-caption {
-                width: 100%;
+                font-size: 0.7rem;
+                padding: 0.4rem 0.6rem;
             }
         }
 
         /* ── Vehicle photo (bustimes.org style) ─────────────────────── */
         .vehicle-photo {
+            position: absolute;
+            top: 0;
+            right: 0;
             margin: 0;
             padding: 0;
             border: 1px solid var(--border-color);
             border-radius: 0.6rem;
             overflow: hidden;
             background: var(--brand-color);
-            width: 300px;
+            width: 120px;
             max-width: 100%;
-            flex-shrink: 0;
         }
 
         .vehicle-photo img {
@@ -274,32 +269,37 @@
         }
 
         .vehicle-photo-caption {
-            margin-top: 0.5rem;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
             padding: 0.5rem 0.75rem;
-            font-size: 0.85rem;
-            color: var(--secondary-text-color);
-            background: var(--background-color);
-            border: 1px solid var(--border-color);
-            border-radius: 0.6rem;
-            width: 300px;
-            max-width: 100%;
-            flex-shrink: 0;
+            font-size: 0.75rem;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+        }
+
+        .vehicle-photo:hover .vehicle-photo-caption {
+            opacity: 1;
         }
 
         .vehicle-photo-caption a {
-            color: var(--link-color);
+            color: white;
         }
 
         .vehicle-photo__title {
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             font-weight: 500;
-            margin-bottom: 0.25rem;
-            color: var(--text-color);
+            margin-bottom: 0.15rem;
+            color: white;
         }
 
         .vehicle-photo__author {
-            font-size: 0.75rem;
-            color: var(--secondary-text-color);
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.8);
             font-style: italic;
         }
     </style>
@@ -311,7 +311,25 @@
 
 {% if vehicle %}
     <div class="vehicle-hero">
-        <div class="vehicle-hero__info">
+        {% with photos=vehicle.photo_set.all %}
+        {% if photos %}
+            <div class="vehicle-photo">
+                <img src="{{ photos.0.get_display_url }}" alt="{{ vehicle }}" loading="lazy">
+                {% if photos.0.caption or photos.0.credit %}
+                    <div class="vehicle-photo-caption">
+                        {% if photos.0.caption %}
+                            <div class="vehicle-photo__title">{{ photos.0.caption }}</div>
+                        {% endif %}
+                        {% if photos.0.credit %}
+                            <div class="vehicle-photo__author">by {{ photos.0.credit }}</div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+        {% endwith %}
+        
+        <div>
             <div class="vehicle-header-row">
                 {% if vehicle.reg %}
                     {% if vehicle.withdrawn %}
@@ -334,24 +352,6 @@
 
             {% include 'vehicle_info.html' %}
         </div>
-        
-        {% with photos=vehicle.photo_set.all %}
-        {% if photos %}
-            <div class="vehicle-photo">
-                <img src="{{ photos.0.get_display_url }}" alt="{{ vehicle }}" loading="lazy">
-            </div>
-            {% if photos.0.caption or photos.0.credit %}
-                <div class="vehicle-photo-caption">
-                    {% if photos.0.caption %}
-                        <div class="vehicle-photo__title">{{ photos.0.caption }}</div>
-                    {% endif %}
-                    {% if photos.0.credit %}
-                        <div class="vehicle-photo__author">by {{ photos.0.credit }}</div>
-                    {% endif %}
-                </div>
-            {% endif %}
-        {% endif %}
-        {% endwith %}
     </div>
 
     {% include 'previous_operators.html' %}
@@ -415,17 +415,15 @@
             <h2 style="font-size: 1rem; margin-bottom: 0.75rem; opacity: 0.7;">More photos</h2>
             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
                 {% for photo in photos %}{% if not forloop.first %}
-                    <div style="width: 180px; margin: 0;">
-                        <div class="vehicle-photo" style="margin: 0;">
-                            <img src="{{ photo.get_display_url }}" alt="" loading="lazy">
-                        </div>
+                    <div class="vehicle-photo" style="width: 80px; margin: 0; position: relative;">
+                        <img src="{{ photo.get_display_url }}" alt="" loading="lazy">
                         {% if photo.caption or photo.credit %}
-                            <div class="vehicle-photo-caption" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; margin-top: 0.25rem;">
+                            <div class="vehicle-photo-caption">
                                 {% if photo.caption %}
-                                    <div class="vehicle-photo__title" style="font-size: 0.8rem;">{{ photo.caption }}</div>
+                                    <div class="vehicle-photo__title">{{ photo.caption }}</div>
                                 {% endif %}
                                 {% if photo.credit %}
-                                    <div class="vehicle-photo__author" style="font-size: 0.7rem;">by {{ photo.credit }}</div>
+                                    <div class="vehicle-photo__author">by {{ photo.credit }}</div>
                                 {% endif %}
                             </div>
                         {% endif %}
