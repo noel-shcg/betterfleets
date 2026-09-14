@@ -95,7 +95,7 @@ from busstops.utils import (
 )
 from bustimes.models import Garage, Route, StopTime
 from bustimes.utils import contiguous_stoptimes_only, get_other_trips_in_block
-from photos.forms import PhotoForm
+
 from photos.models import Photo
 
 from . import filters, forms
@@ -2494,10 +2494,6 @@ class VehicleDetailView(DetailView):
         if self.request.user.is_authenticated and not context["review_blocked"]:
             context["review_form"] = forms.VehicleReviewForm()
 
-        if self.request.user.has_perm("photos.add_photo"):
-            context["photo_form"] = PhotoForm()
-        elif getattr(self.request.user, "trusted", False):
-            context["photo_form"] = PhotoForm()
         if self.request.user.is_authenticated:
             context["can_log_vehicle"] = True
             context["vehicle_logged"] = has_vehicle_been_logged(
@@ -2665,43 +2661,6 @@ class VehicleDetailView(DetailView):
                     self.request, f"Photo logged (total: {photo_log.quantity})."
                 )
             return self.get(*args, **kwargs)
-        if self.request.user.is_authenticated and "suggest_photo" in self.request.POST:
-            from busstops.data_changes import record_pending_change
-            from django.http import JsonResponse
-
-            flickr_url = self.request.POST.get("photo_url", "")
-            if not flickr_url or "flickr.com" not in flickr_url.lower():
-                if self.request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                    return JsonResponse(
-                        {"success": False, "error": "Please enter a valid Flickr URL"}
-                    )
-                else:
-                    messages.error(self.request, "Please enter a valid Flickr URL")
-                    return self.get(*args, **kwargs)
-
-            # Create a pending change for the photo suggestion
-            record_pending_change(
-                source="photo_suggestion",
-                instance=vehicle,
-                operation="add_photo",
-                changes={"flickr_url": {"to": flickr_url}},
-                payload={
-                    "flickr_url": flickr_url,
-                    "requested_by_id": self.request.user.id,
-                    "requested_by_label": str(self.request.user),
-                    "requested_title": f"Photo for {vehicle}",
-                    "summary": f"Photo suggestion by {self.request.user.username}",
-                },
-                reason=f"Photo suggestion by {self.request.user.username}",
-            )
-
-            if self.request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                return JsonResponse({"success": True})
-            else:
-                messages.success(
-                    self.request, "Photo suggestion submitted for approval!"
-                )
-                return self.get(*args, **kwargs)
         if self.request.user.is_authenticated and (
             "rating" in self.request.POST or "message" in self.request.POST
         ):
@@ -2759,88 +2718,6 @@ class VehicleDetailView(DetailView):
                 vehicle=vehicle,
             )
             review.delete()
-        elif (
-            self.request.user.has_perm("photos.add_photo")
-            or getattr(self.request.user, "trusted", False)
-        ) and "flickr_url" in self.request.POST:
-            form = PhotoForm(self.request.POST)
-            if form.is_valid():
-                try:
-                    photo = Photo()
-                    photo.user = self.request.user
-                    photo.flickr_url = form.cleaned_data["flickr_url"]
-                    photo.credit = form.cleaned_data.get("credit", "")
-                    photo.caption = form.cleaned_data.get("caption", "")
-                    photo.save()  # This will trigger automatic download
-                    photo.vehicles.add(vehicle)
-                    messages.success(self.request, "Photo added successfully.")
-                except Exception as e:
-                    messages.error(self.request, f"Error adding photo: {str(e)}")
-        elif (
-            getattr(self.request.user, "trusted", False)
-            and "tu_flickr_url" in self.request.POST
-        ):
-            # Trusted user photo addition
-            flickr_url = self.request.POST.get("tu_flickr_url")
-            credit = self.request.POST.get("tu_credit", "")
-            caption = self.request.POST.get("tu_caption", "")
-
-            if not flickr_url:
-                messages.error(self.request, "Please provide a Flickr URL.")
-                return self.get(*args, **kwargs)
-
-            if "flickr.com" not in flickr_url.lower():
-                messages.error(self.request, "Only Flickr URLs are allowed.")
-                return self.get(*args, **kwargs)
-
-            try:
-                photo = Photo()
-                photo.user = self.request.user
-                photo.flickr_url = flickr_url
-                photo.credit = credit
-                photo.caption = caption
-                photo.save()  # This will trigger automatic download
-                photo.vehicles.add(vehicle)
-                messages.success(self.request, "Photo added successfully.")
-            except Exception as e:
-                messages.error(self.request, f"Error adding photo: {str(e)}")
-
-        elif (
-            self.request.user.is_authenticated and "suggest_photo" in self.request.POST
-        ):
-            from service_requests.models import Request, RequestCategory
-
-            photo_url = self.request.POST.get("photo_url")
-            summary = self.request.POST.get("summary")
-
-            if not photo_url:
-                messages.error(self.request, "Please provide a Flickr URL.")
-                return self.get(*args, **kwargs)
-
-            if "flickr.com" not in photo_url.lower():
-                messages.error(self.request, "Only Flickr URLs are allowed.")
-                return self.get(*args, **kwargs)
-
-            if not summary:
-                messages.error(self.request, "Please provide a summary.")
-                return self.get(*args, **kwargs)
-
-            # Create request for photo suggestion
-            description = f"Photo suggestion for {vehicle}\n\n"
-            description += f"Flickr URL: {photo_url}\n"
-            description += f"Summary: {summary}\n"
-            description += "Note: Image will be automatically downloaded from Flickr URL when approved."
-
-            Request.objects.create(
-                title=f"Photo suggestion for {vehicle}",
-                description=description,
-                category=RequestCategory.PHOTO,
-                vehicle=vehicle,
-                photo_url=photo_url,
-                author=self.request.user,
-            )
-
-            messages.success(self.request, "Photo suggestion submitted for review.")
 
         return self.get(*args, **kwargs)
 

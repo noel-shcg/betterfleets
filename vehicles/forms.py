@@ -1,7 +1,6 @@
 from django import forms
 from django.conf import settings
 from django.contrib.admin.widgets import AutocompleteSelect
-from django.core.exceptions import ValidationError
 from decimal import Decimal
 
 from busstops.models import (
@@ -23,34 +22,6 @@ from .models import (
     VehicleReview,
     VehicleType,
 )
-
-
-class PhotoForm(forms.Form):
-    """Form for adding Flickr photos to vehicles."""
-
-    flickr_url = forms.URLField(
-        label="Flickr URL",
-        help_text="Enter a Flickr photo URL (image will be downloaded automatically)",
-        required=True,
-    )
-    credit = forms.CharField(
-        label="Credit",
-        max_length=255,
-        required=False,
-        help_text="Photo credit (optional, will be auto-filled from Flickr if not provided)",
-    )
-    caption = forms.CharField(
-        label="Caption",
-        max_length=255,
-        required=False,
-        help_text="Photo caption (optional, will be auto-filled from Flickr if not provided)",
-    )
-
-    def clean_flickr_url(self):
-        url = self.cleaned_data.get("flickr_url")
-        if url and "flickr.com" not in url.lower():
-            raise ValidationError("Only Flickr URLs are allowed for photos.")
-        return url
 
 
 class AutocompleteWidget(forms.Select):
