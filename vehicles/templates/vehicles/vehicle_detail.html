@@ -273,16 +273,17 @@
             object-fit: cover;
         }
 
-        .vehicle-photo figcaption {
+        .vehicle-photo-caption {
+            margin-top: 0.5rem;
             padding: 0.5rem 0.75rem;
             font-size: 0.85rem;
             color: var(--secondary-text-color);
             background: var(--background-color);
-            border-top: 1px solid var(--border-color);
-            margin: 0;
+            border: 1px solid var(--border-color);
+            border-radius: 0.6rem;
         }
 
-        .vehicle-photo figcaption a {
+        .vehicle-photo-caption a {
             color: var(--link-color);
         }
 
@@ -328,28 +329,24 @@
                 {% endif %}
             </div>
 
-            {% if vehicle.livery or vehicle.colours %}
-                <div class="livery{% if vehicle.livery_id %} livery-{{ vehicle.livery_id }}{% endif %}" style="background:{{ vehicle.get_livery }}"></div>
-            {% endif %}
-
             {% include 'vehicle_info.html' %}
         </div>
         
         {% with photos=vehicle.photo_set.all %}
         {% if photos %}
-            <figure class="vehicle-photo">
+            <div class="vehicle-photo">
                 <img src="{{ photos.0.get_display_url }}" alt="{{ vehicle }}" loading="lazy">
-                {% if photos.0.caption or photos.0.credit %}
-                    <figcaption>
-                        {% if photos.0.caption %}
-                            <div class="vehicle-photo__title">{{ photos.0.caption }}</div>
-                        {% endif %}
-                        {% if photos.0.credit %}
-                            <div class="vehicle-photo__author">by {{ photos.0.credit }}</div>
-                        {% endif %}
-                    </figcaption>
-                {% endif %}
-            </figure>
+            </div>
+            {% if photos.0.caption or photos.0.credit %}
+                <div class="vehicle-photo-caption">
+                    {% if photos.0.caption %}
+                        <div class="vehicle-photo__title">{{ photos.0.caption }}</div>
+                    {% endif %}
+                    {% if photos.0.credit %}
+                        <div class="vehicle-photo__author">by {{ photos.0.credit }}</div>
+                    {% endif %}
+                </div>
+            {% endif %}
         {% endif %}
         {% endwith %}
     </div>
@@ -415,19 +412,21 @@
             <h2 style="font-size: 1rem; margin-bottom: 0.75rem; opacity: 0.7;">More photos</h2>
             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
                 {% for photo in photos %}{% if not forloop.first %}
-                    <figure class="vehicle-photo" style="width: 180px; margin: 0;">
-                        <img src="{{ photo.get_display_url }}" alt="" loading="lazy">
+                    <div style="width: 180px; margin: 0;">
+                        <div class="vehicle-photo" style="margin: 0;">
+                            <img src="{{ photo.get_display_url }}" alt="" loading="lazy">
+                        </div>
                         {% if photo.caption or photo.credit %}
-                            <figcaption style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                            <div class="vehicle-photo-caption" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; margin-top: 0.25rem;">
                                 {% if photo.caption %}
                                     <div class="vehicle-photo__title" style="font-size: 0.8rem;">{{ photo.caption }}</div>
                                 {% endif %}
                                 {% if photo.credit %}
                                     <div class="vehicle-photo__author" style="font-size: 0.7rem;">by {{ photo.credit }}</div>
                                 {% endif %}
-                            </figcaption>
+                            </div>
                         {% endif %}
-                    </figure>
+                    </div>
                 {% endif %}{% endfor %}
             </div>
         </section>
