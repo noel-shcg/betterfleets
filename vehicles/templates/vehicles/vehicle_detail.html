@@ -127,6 +127,7 @@
             gap: 1.25rem;
             margin: 1rem 0 1.5rem;
             align-items: flex-start;
+            flex-wrap: wrap;
         }
 
         .vehicle-header-row {
@@ -245,26 +246,24 @@
                 font-size: 1.35rem;
             }
             .vehicle-photo {
-                float: none;
                 width: 100%;
                 margin-left: 0;
+                margin-top: 1rem;
                 margin-bottom: 1rem;
             }
         }
 
         /* ── Vehicle photo (bustimes.org style) ─────────────────────── */
         .vehicle-photo {
-            margin: 0 0 1rem 0;
+            margin: 0 0 0 1.25rem;
             padding: 0;
             border: 1px solid var(--border-color);
             border-radius: 0.6rem;
             overflow: hidden;
             background: var(--brand-color);
-            float: right;
             width: 300px;
             max-width: 100%;
-            margin-left: 1.25rem;
-            margin-bottom: 0.5rem;
+            flex-shrink: 0;
         }
 
         .vehicle-photo img {
@@ -299,12 +298,6 @@
             color: var(--secondary-text-color);
             font-style: italic;
         }
-
-        .vehicle-hero::after {
-            content: "";
-            display: table;
-            clear: both;
-        }
     </style>
 {% endblock head %}
 
@@ -314,24 +307,6 @@
 
 {% if vehicle %}
     <div class="vehicle-hero">
-        {% with photos=vehicle.photo_set.all %}
-        {% if photos %}
-            <figure class="vehicle-photo">
-                <img src="{{ photos.0.get_display_url }}" alt="{{ vehicle }}" loading="lazy">
-                {% if photos.0.caption or photos.0.credit %}
-                    <figcaption>
-                        {% if photos.0.caption %}
-                            <div class="vehicle-photo__title">{{ photos.0.caption }}</div>
-                        {% endif %}
-                        {% if photos.0.credit %}
-                            <div class="vehicle-photo__author">by {{ photos.0.credit }}</div>
-                        {% endif %}
-                    </figcaption>
-                {% endif %}
-            </figure>
-        {% endif %}
-        {% endwith %}
-        
         <div class="vehicle-hero__info">
             <div class="vehicle-header-row">
                 {% if vehicle.reg %}
@@ -359,6 +334,24 @@
 
             {% include 'vehicle_info.html' %}
         </div>
+        
+        {% with photos=vehicle.photo_set.all %}
+        {% if photos %}
+            <figure class="vehicle-photo">
+                <img src="{{ photos.0.get_display_url }}" alt="{{ vehicle }}" loading="lazy">
+                {% if photos.0.caption or photos.0.credit %}
+                    <figcaption>
+                        {% if photos.0.caption %}
+                            <div class="vehicle-photo__title">{{ photos.0.caption }}</div>
+                        {% endif %}
+                        {% if photos.0.credit %}
+                            <div class="vehicle-photo__author">by {{ photos.0.credit }}</div>
+                        {% endif %}
+                    </figcaption>
+                {% endif %}
+            </figure>
+        {% endif %}
+        {% endwith %}
     </div>
 
     {% include 'previous_operators.html' %}
@@ -418,11 +411,11 @@
 
     {% with photos=vehicle.photo_set.all %}
     {% if photos|length > 1 %}
-        <section style="margin: 1rem 0; clear: both;">
+        <section style="margin: 1rem 0;">
             <h2 style="font-size: 1rem; margin-bottom: 0.75rem; opacity: 0.7;">More photos</h2>
             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
                 {% for photo in photos %}{% if not forloop.first %}
-                    <figure class="vehicle-photo" style="width: 180px; margin: 0; float: none;">
+                    <figure class="vehicle-photo" style="width: 180px; margin: 0;">
                         <img src="{{ photo.get_display_url }}" alt="" loading="lazy">
                         {% if photo.caption or photo.credit %}
                             <figcaption style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
