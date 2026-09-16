@@ -5168,7 +5168,7 @@ vehicle.garage.name if vehicle.garage else "",
         from vehicles.models import Vehicle
         from vehicles.views import current_vehicle_filters
         
-        if not request.user.advanced_mode:
+        if not request.user.is_superuser and not getattr(request.user, 'advanced_mode', False):
             raise PermissionDenied
         
         operator = self.get_object(request, object_id)
