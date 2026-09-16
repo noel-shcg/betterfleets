@@ -460,6 +460,7 @@ class AdvancedField(models.Model):
     class FieldType(models.TextChoices):
         BOOLEAN = "boolean", "Boolean (true/false)"
         NUMBER = "number", "Number"
+        FLOAT = "float", "Float (decimal)"
         TEXT = "text", "Text"
         DATE = "date", "Date"
         URL = "url", "URL"

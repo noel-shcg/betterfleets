@@ -297,8 +297,15 @@ def apply_revision(revision, features=None):
                     to_value = False
                 elif to_value == "":
                     to_value = None
-                elif to_value.isdigit():
-                    to_value = int(to_value)
+                else:
+                    # Try to convert to float first (handles both integers and decimals)
+                    try:
+                        to_value = float(to_value)
+                        # If it's a whole number, convert to int
+                        if to_value.is_integer():
+                            to_value = int(to_value)
+                    except ValueError:
+                        pass  # Keep as string if not a valid number
             advanced_data[field_name] = to_value
             vehicle.advanced = advanced_data
             changed_fields.append("advanced")

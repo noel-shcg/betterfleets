@@ -100,6 +100,12 @@ class AdvancedFieldsMixin:
                     help_text=field.help_text,
                     required=False,
                 )
+            elif field.field_type == AdvancedField.FieldType.FLOAT:
+                self.fields[field_name] = forms.FloatField(
+                    label=field.name,
+                    help_text=field.help_text,
+                    required=False,
+                )
             elif field.field_type == AdvancedField.FieldType.DATE:
                 self.fields[field_name] = forms.DateField(
                     label=field.name,
@@ -131,7 +137,11 @@ class AdvancedFieldsMixin:
                         max_length=500,
                     )
 
-            self.fields[field_name].initial = values.get(field.slug, "")
+            initial_value = values.get(field.slug, "")
+            # Convert float values to string for display, but keep original type for validation
+            if field.field_type == AdvancedField.FieldType.FLOAT and initial_value is not None:
+                initial_value = str(initial_value) if initial_value != "" else ""
+            self.fields[field_name].initial = initial_value
             self.advanced_field_fields[field_name] = field
 
     def get_dropdown_choices(self, slug):
@@ -157,6 +167,8 @@ class AdvancedFieldsMixin:
                 updates[field.slug] = bool(value)
             elif field.field_type == AdvancedField.FieldType.NUMBER:
                 updates[field.slug] = value if value is not None else ""
+            elif field.field_type == AdvancedField.FieldType.FLOAT:
+                updates[field.slug] = str(value) if value is not None else ""
             elif field.field_type == AdvancedField.FieldType.DATE:
                 updates[field.slug] = value.isoformat() if value else ""
             else:
@@ -316,7 +328,7 @@ class EditVehicleForm(
     )
 
     joined_fleet = forms.CharField(
-        label="New to fleet",
+        label="Delivered",
         required=False,
         max_length=7,
         help_text="MM-YYYY format (e.g., 01-2024)",
