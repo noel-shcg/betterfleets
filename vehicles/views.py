@@ -3870,7 +3870,6 @@ def edit_vehicle(request, **kwargs):
                 not in {
                     "add_previous_operator",
                     "add_previous_operator_joined_fleet",
-                    "summary",
                 }
                 and not key.startswith(dynamic_field_prefixes)
             }
@@ -3881,6 +3880,10 @@ def edit_vehicle(request, **kwargs):
             advanced_field_updates = form.get_advanced_field_updates()
             if advanced_field_updates:
                 data["advanced"] = advanced_field_updates
+
+            # Add summary field if it was changed
+            if "summary" in form.changed_data:
+                data["summary"] = form.cleaned_data["summary"]
 
             # Check for existing pending revisions before creating new one
             has_pending = False

@@ -315,6 +315,7 @@ class NewVehicleRequestTests(TestCase):
         self.assertEqual(revision.from_garage, garage_a)
         self.assertEqual(revision.to_garage, garage_b)
         self.assertTrue(revision.pending)
+        self.assertEqual(revision.message, "Moved to the other garage.")
 
     def test_non_local_expert_can_still_edit_operator_vehicle(self):
         vehicle = Vehicle.objects.create(
