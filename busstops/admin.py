@@ -5165,8 +5165,7 @@ vehicle.garage.name if vehicle.garage else "",
 
     def export_advanced_fleet_view(self, request, object_id):
         from fleet.exporters.xlsx import build_basic_fleet_workbook, workbook_bytes
-        from vehicles.models import Vehicle
-        from vehicles.views import current_vehicle_filters
+        from vehicles.models import Vehicle, current_vehicle_filters
         
         if not request.user.is_superuser and not getattr(request.user, 'advanced_mode', False):
             raise PermissionDenied
