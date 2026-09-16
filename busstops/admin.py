@@ -3311,10 +3311,11 @@ class OperatorAdmin(admin.ModelAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         fields = list(super().get_readonly_fields(request, obj))
-        if request.user.is_superuser and obj:
+        if obj and (request.user.is_superuser or getattr(request.user, 'advanced_mode', False)):
             fields.append("mass_add_buses_link")
             fields.append("mass_add_routes_link")
             fields.append("mass_edit_buses_link")
+            fields.append("advanced_mass_edit_link")
             fields.append("vehicle_admin_link")
             fields.append("depot_admin_link")
             if obj.vehicle_set.filter(**current_vehicle_filters()).count() > self.vehicle_inline_limit:
@@ -3365,6 +3366,16 @@ class OperatorAdmin(admin.ModelAdmin):
                 name="busstops_operator_mass_edit_buses_template",
             ),
             path(
+                "<path:object_id>/advanced-mass-edit/",
+                self.admin_site.admin_view(self.advanced_mass_edit_view),
+                name="busstops_operator_advanced_mass_edit",
+            ),
+            path(
+                "<path:object_id>/advanced-mass-edit/template.xlsx",
+                self.admin_site.admin_view(self.advanced_mass_edit_template_view),
+                name="busstops_operator_advanced_mass_edit_template",
+            ),
+            path(
                 "<path:object_id>/export-basic.xlsx",
                 self.admin_site.admin_view(self.export_basic_fleet_view),
                 name="busstops_operator_export_basic",
@@ -3391,6 +3402,11 @@ class OperatorAdmin(admin.ModelAdmin):
     def mass_edit_buses_link(self, obj):
         url = reverse("admin:busstops_operator_mass_edit_buses", args=(obj.pk,))
         return format_html('<a class="button" href="{}">Mass edit buses</a>', url)
+
+    @admin.display(description="Advanced mass edit")
+    def advanced_mass_edit_link(self, obj):
+        url = reverse("admin:busstops_operator_advanced_mass_edit", args=(obj.pk,))
+        return format_html('<a class="button" href="{}">Advanced mass edit</a>', url)
 
     def _build_mass_add_template_workbook(self, rows=None):
         workbook = Workbook()
@@ -3975,6 +3991,243 @@ vehicle.garage.name if vehicle.garage else "",
             f'attachment; filename="{operator.pk.lower()}-mass-edit-template.xlsx"'
         )
         return response
+
+    def _build_advanced_mass_edit_template_workbook(self):
+        from vehicles.models import AdvancedField
+
+        workbook = Workbook()
+        worksheet = workbook.active
+        worksheet.title = "Advanced Mass Edit"
+
+        # Build headers: Operator | Reg | Fleet Number | Type | [advanced fields]
+        headers = ["Operator", "Reg", "Fleet Number", "Type"]
+        
+        # Add advanced field headers
+        advanced_fields = AdvancedField.objects.all().order_by("display_order", "name")
+        for field in advanced_fields:
+            headers.append(field.name)
+        
+        worksheet.append(headers)
+
+        return workbook
+
+    def advanced_mass_edit_template_view(self, request, object_id):
+        if not request.user.is_superuser and not getattr(request.user, 'advanced_mode', False):
+            raise PermissionDenied
+
+        operator = self.get_object(request, object_id)
+        if operator is None:
+            raise PermissionDenied
+
+        workbook = self._build_advanced_mass_edit_template_workbook()
+        stream = BytesIO()
+        workbook.save(stream)
+        stream.seek(0)
+
+        response = HttpResponse(
+            stream.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response["Content-Disposition"] = (
+            f'attachment; filename="{operator.pk.lower()}-advanced-mass-edit-template.xlsx"'
+        )
+        return response
+
+    def advanced_mass_edit_view(self, request, object_id):
+        if not request.user.is_superuser and not getattr(request.user, 'advanced_mode', False):
+            raise PermissionDenied
+
+        operator = self.get_object(request, object_id)
+        if operator is None:
+            raise PermissionDenied
+
+        from vehicles.models import AdvancedField, Vehicle
+
+        rows = []
+        updated = 0
+        errors = 0
+
+        if request.method == "POST":
+            form = MassEditBusesForm(request.POST, request.FILES)
+            if form.is_valid():
+                rows_text = form.cleaned_data.get("rows_text") or ""
+                workbook = form.cleaned_data.get("workbook")
+                try:
+                    if workbook:
+                        rows_text = self._rows_text_from_workbook(workbook)
+                except ValueError as exc:
+                    form.add_error("workbook", str(exc))
+
+                if not form.errors and not rows_text.strip():
+                    form.add_error(None, "Paste rows or upload a completed workbook.")
+
+                if not form.errors:
+                    # Parse the advanced mass edit rows
+                    rows = self._parse_advanced_mass_edit_rows(operator, rows_text)
+                    form = MassEditBusesForm(initial={"rows_text": rows_text})
+
+                    if request.POST.get("action") == "commit":
+                        updated, errors = self._commit_advanced_mass_edit_rows(operator, rows)
+                        if updated:
+                            self.message_user(
+                                request,
+                                f"Advanced mass edit complete: updated {updated}, errors {errors}",
+                            )
+                        elif errors:
+                            self.message_user(
+                                request,
+                                f"No rows updated. {errors} row(s) had errors.",
+                                level=messages.WARNING,
+                            )
+                    else:
+                        self.message_user(
+                            request,
+                            "Preview generated. Review rows and click Commit changes when ready.",
+                        )
+        else:
+            form = MassEditBusesForm()
+
+        context = {
+            **self.admin_site.each_context(request),
+            "opts": self.model._meta,
+            "original": operator,
+            "operator": operator,
+            "title": f"Advanced mass edit for {operator}",
+            "form": form,
+            "rows": rows,
+            "can_commit": any(not row["errors"] for row in rows),
+            "updated": updated,
+            "errors": errors,
+            "template_download_url": reverse(
+                "admin:busstops_operator_advanced_mass_edit_template", args=(operator.pk,)
+            ),
+            "export_download_url": reverse(
+                "admin:busstops_operator_export_advanced", args=(operator.pk,)
+            ),
+            "commit_label": "Commit changes",
+        }
+
+        return TemplateResponse(
+            request,
+            "admin/busstops/operator/advanced_mass_edit.html",
+            context,
+        )
+
+    def _parse_advanced_mass_edit_rows(self, operator, rows_text):
+        from vehicles.models import AdvancedField, Vehicle, VehicleType
+
+        rows = []
+        advanced_fields = list(AdvancedField.objects.all().order_by("display_order", "name"))
+        dropdown_fields = {"chassis", "engine", "gearbox", "emissions"}
+        
+        for row_number, line in enumerate(rows_text.strip().split("\n"), start=1):
+            if not line.strip():
+                continue
+            
+            values = line.split("\t")
+            row = {
+                "row_number": row_number,
+                "raw": {},
+                "vehicle": None,
+                "values": {},
+                "errors": [],
+            }
+            
+            try:
+                # Parse basic columns: Operator | Reg | Fleet Number | Type | [advanced fields]
+                if len(values) < 4:
+                    row["errors"].append("Expected at least 4 columns: Operator, Reg, Fleet Number, Type")
+                    rows.append(row)
+                    continue
+                
+                operator_code = values[0].strip()
+                reg = values[1].strip()
+                fleet_number = values[2].strip()
+                vehicle_type_name = values[3].strip()
+                
+                row["raw"]["operator"] = operator_code
+                row["raw"]["reg"] = reg
+                row["raw"]["fleet_number"] = fleet_number
+                row["raw"]["type"] = vehicle_type_name
+                
+                # Find the vehicle
+                vehicle = Vehicle.objects.filter(
+                    operator=operator,
+                    reg=reg
+                ).first()
+                
+                if not vehicle:
+                    row["errors"].append(f"Vehicle with reg '{reg}' not found for operator")
+                    rows.append(row)
+                    continue
+                
+                row["vehicle"] = vehicle
+                
+                # Parse advanced fields
+                advanced_values = {}
+                for i, field in enumerate(advanced_fields):
+                    if i + 4 < len(values):  # +4 because first 4 columns are basic fields
+                        value = values[i + 4].strip()
+                        if value:
+                            # Validate dropdown fields
+                            if field.slug in dropdown_fields:
+                                dropdown_choices = self._get_dropdown_choices(field.slug)
+                                if value not in dropdown_choices:
+                                    row["errors"].append(
+                                        f"Invalid value '{value}' for {field.name}. "
+                                        f"Valid choices: {', '.join(dropdown_choices)}"
+                                    )
+                            advanced_values[field.slug] = value
+                
+                row["values"] = advanced_values
+                
+            except Exception as exc:
+                row["errors"].append(str(exc))
+            
+            rows.append(row)
+        
+        return rows
+
+    def _get_dropdown_choices(self, slug):
+        import json
+        from pathlib import Path
+
+        json_file = Path(__file__).parent.parent / "vehicles" / "static" / "vehicles" / f"{slug}.json"
+        if json_file.exists():
+            with open(json_file) as f:
+                data = json.load(f)
+                return data if isinstance(data, list) else []
+        return []
+
+    def _commit_advanced_mass_edit_rows(self, operator, rows):
+        from vehicles.models import Vehicle
+        
+        updated = 0
+        errors = 0
+        
+        for row in rows:
+            if row["errors"]:
+                errors += 1
+                continue
+            
+            try:
+                vehicle = row["vehicle"]
+                
+                # Update advanced fields
+                if row["values"]:
+                    advanced_data = dict(vehicle.advanced or {})
+                    for field_slug, value in row["values"].items():
+                        if value:
+                            advanced_data[field_slug] = value
+                    vehicle.advanced = advanced_data
+                    vehicle.save(update_fields=["advanced"])
+                    updated += 1
+                    
+            except Exception as exc:
+                row["errors"].append(str(exc))
+                errors += 1
+        
+        return updated, errors
 
     @admin.display(description="Vehicles")
     @admin.display(description="Vehicles")
