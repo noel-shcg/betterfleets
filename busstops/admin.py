@@ -541,7 +541,7 @@ class SimpleSpreadsheetImportForm(forms.Form):
         widget=forms.ClearableFileInput(
             attrs={"accept": ".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
         ),
-        help_text="Upload a .xlsx file with 6 sheets: Weekdays/Saturdays/Sundays x Inbound/Outbound. Column A contains ATCO codes, columns B+ are trips.",
+        help_text="Upload a .xlsx file. Supports: 1) 6 sheets (Weekdays/Saturdays/Sundays x Inbound/Outbound), or 2) Single sheet (Sheet1/Timetable). Column A contains ATCO codes or CRS codes (for train stations), columns B+ are trips. Times can be HH:MM or HHMM format.",
     )
 
 
@@ -6048,12 +6048,21 @@ class ServiceAdmin(GISModelAdmin):
         text = (value or "").strip()
         if not text:
             return None
+        # Try HH:MM or HH:MM:SS format first
         match = re.fullmatch(r"(?P<hours>\d{1,3}):(?P<minutes>\d{2})(?::(?P<seconds>\d{2}))?", text)
-        if not match:
-            raise ValueError(f"Invalid time '{text}'. Use HH:MM or HH:MM:SS.")
-        hours = int(match.group("hours"))
-        minutes = int(match.group("minutes"))
-        seconds = int(match.group("seconds")) if match.group("seconds") else 0
+        if match:
+            hours = int(match.group("hours"))
+            minutes = int(match.group("minutes"))
+            seconds = int(match.group("seconds")) if match.group("seconds") else 0
+        else:
+            # Try HHMM format (without colon)
+            match = re.fullmatch(r"(?P<hours>\d{1,3})(?P<minutes>\d{2})", text)
+            if match:
+                hours = int(match.group("hours"))
+                minutes = int(match.group("minutes"))
+                seconds = 0
+            else:
+                raise ValueError(f"Invalid time '{text}'. Use HH:MM, HH:MM:SS, or HHMM format.")
         if minutes >= 60:
             raise ValueError(f"Invalid time '{text}'. Minutes must be below 60.")
         if seconds >= 60:
@@ -6316,7 +6325,7 @@ class ServiceAdmin(GISModelAdmin):
                 worksheet = workbook.create_sheet(sheet_name)
 
             # Headers
-            worksheet.cell(row=1, column=1, value="ATCO Code")
+            worksheet.cell(row=1, column=1, value="ATCO/CRS Code")
             worksheet.cell(row=1, column=1).font = header_font
             worksheet.cell(row=1, column=2, value="Trip 1")
             worksheet.cell(row=1, column=2).font = header_font
@@ -6326,17 +6335,17 @@ class ServiceAdmin(GISModelAdmin):
             worksheet.cell(row=1, column=4).font = header_font
 
             # Example data
-            worksheet.cell(row=2, column=1, value="Example: 0500CCITY160")
+            worksheet.cell(row=2, column=1, value="Example: 0500CCITY160 or SOU")
             worksheet.cell(row=2, column=2, value="08:00")
             worksheet.cell(row=2, column=3, value="08:30")
             worksheet.cell(row=2, column=4, value="09:00")
 
-            worksheet.cell(row=3, column=1, value="Example: 0500CCITY161")
+            worksheet.cell(row=3, column=1, value="Example: 0500CCITY161 or WLS")
             worksheet.cell(row=3, column=2, value="08:05")
             worksheet.cell(row=3, column=3, value="08:35")
             worksheet.cell(row=3, column=4, value="09:05")
 
-            worksheet.cell(row=4, column=1, value="Example: 0500CCITY162")
+            worksheet.cell(row=4, column=1, value="Example: 0500CCITY162 or SNW")
             worksheet.cell(row=4, column=2, value="08:10")
             worksheet.cell(row=4, column=3, value="08:40")
             worksheet.cell(row=4, column=4, value="09:10")
@@ -6352,21 +6361,25 @@ class ServiceAdmin(GISModelAdmin):
         instructions.append(["", "Saturdays - Outbound"])
         instructions.append(["", "Sundays - Outbound"])
         instructions.append(["", ""])
-        instructions.append(["Column A", "ATCO codes for stops (one per row)"])
-        instructions.append(["", "Enter the ATCO code for each stop in the route"])
+        instructions.append(["Alternative", "Single sheet support:"])
+        instructions.append(["", "Sheet1 or Timetable (defaults to weekdays outbound)"])
+        instructions.append(["", ""])
+        instructions.append(["Column A", "ATCO codes or CRS codes for stops (one per row)"])
+        instructions.append(["", "Enter the ATCO code for bus stops or CRS code for train stations"])
         instructions.append(["", "Must match existing stops in the database"])
         instructions.append(["", ""])
         instructions.append(["Columns B+", "Each column represents one trip/journey"])
-        instructions.append(["", "Enter departure times in HH:MM format"])
+        instructions.append(["", "Enter departure times in HH:MM or HHMM format"])
         instructions.append(["", "Times can be left blank if a trip doesn't stop at a particular stop"])
         instructions.append(["", "You can add as many trip columns as needed"])
         instructions.append(["", ""])
-        instructions.append(["Time Format", "Use HH:MM format (e.g., 08:00, 23:45)"])
+        instructions.append(["Time Format", "Use HH:MM (e.g., 08:00, 23:45) or HHMM (e.g., 0800, 2345)"])
         instructions.append(["", "24-hour format is required"])
         instructions.append(["", ""])
-        instructions.append(["Notes", "Replace the example data with your actual ATCO codes and times"])
+        instructions.append(["Notes", "Replace the example data with your actual ATCO/CRS codes and times"])
         instructions.append(["", "Each sheet creates trips for that day type and direction"])
         instructions.append(["", "The system will automatically create calendars and routes"])
+        instructions.append(["", "CRS codes are supported for train stations"])
 
         return workbook
 
@@ -6382,6 +6395,9 @@ class ServiceAdmin(GISModelAdmin):
             "Weekdays - Outbound": ("weekdays", False),
             "Saturdays - Outbound": ("saturdays", False),
             "Sundays - Outbound": ("sundays", False),
+            # Support single sheet structure (defaults to weekdays outbound)
+            "Sheet1": ("weekdays", False),
+            "Timetable": ("weekdays", False),
         }
 
         # Get or create calendars
@@ -6430,17 +6446,20 @@ class ServiceAdmin(GISModelAdmin):
                 calendar = calendars[day_type]
                 worksheet = workbook[sheet_name]
 
-                # Parse stops from column A
+                # Parse stops from column A (supports both ATCO codes and CRS codes)
                 stops = []
                 for row in range(2, worksheet.max_row + 1):
-                    atco_code = worksheet.cell(row=row, column=1).value
-                    if atco_code and str(atco_code).strip():
-                        atco_code = str(atco_code).strip()
-                        stop = models.StopPoint.objects.filter(atco_code=atco_code).first()
+                    stop_code = worksheet.cell(row=row, column=1).value
+                    if stop_code and str(stop_code).strip():
+                        stop_code = str(stop_code).strip()
+                        # Try ATCO code first, then CRS code
+                        stop = models.StopPoint.objects.filter(atco_code=stop_code).first()
+                        if not stop:
+                            stop = models.StopPoint.objects.filter(crs_code__iexact=stop_code).first()
                         if stop:
                             stops.append((row, stop))
                         else:
-                            errors.append(f"Unknown ATCO code '{atco_code}' in {sheet_name} row {row}")
+                            errors.append(f"Unknown stop code '{stop_code}' (tried ATCO and CRS) in {sheet_name} row {row}")
 
                 if not stops:
                     continue
