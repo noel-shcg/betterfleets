@@ -230,6 +230,7 @@ class EditStopForm(forms.Form):
         "crossing",
         "description",
         "notes",
+        "crs_code",
         "features",
         "accessibility_features",
         "summary",
@@ -242,6 +243,7 @@ class EditStopForm(forms.Form):
     crossing = forms.CharField(max_length=48, required=False)
     description = forms.CharField(max_length=255, required=False)
     notes = forms.CharField(max_length=255, required=False)
+    crs_code = forms.CharField(max_length=3, required=False, label="CRS code")
     features = forms.ModelMultipleChoiceField(
         queryset=StopFeature.objects.filter(category=StopFeature.Category.FEATURE),
         widget=forms.CheckboxSelectMultiple,
@@ -257,7 +259,7 @@ class EditStopForm(forms.Form):
         help_text="Explain your changes and how you know they are correct.",
     )
 
-    def __init__(self, data=None, *args, stop: StopPoint, **kwargs):
+    def __init__(self, data=None, *args, stop: StopPoint, is_staff=False, **kwargs):
         super().__init__(data, *args, **kwargs)
         self.fields["common_name"].initial = stop.common_name
         self.fields["indicator"].initial = stop.indicator
@@ -266,9 +268,14 @@ class EditStopForm(forms.Form):
         self.fields["crossing"].initial = stop.crossing
         self.fields["description"].initial = stop.description or ""
         self.fields["notes"].initial = stop.notes or ""
+        self.fields["crs_code"].initial = stop.crs_code or ""
         self.fields["features"].initial = stop.features.filter(
             category=StopFeature.Category.FEATURE
         )
         self.fields["accessibility_features"].initial = stop.features.filter(
             category=StopFeature.Category.ACCESSIBILITY
         )
+        
+        # Only show CRS field to staff users
+        if not is_staff:
+            del self.fields["crs_code"]

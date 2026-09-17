@@ -2132,7 +2132,7 @@ def edit_stop(request, pk):
     if hasattr(form_data, "status_code"):
         return form_data
 
-    form = forms.EditStopForm(form_data, stop=stop)
+    form = forms.EditStopForm(form_data, stop=stop, is_staff=request.user.is_staff)
     request_entry = None
     recent_logs = DataChangeLog.objects.filter(
         source="stop_request",
@@ -2158,6 +2158,8 @@ def edit_stop(request, pk):
                     "description",
                     "notes",
                 )
+                if request.user.is_staff:
+                    scalar_fields += ("crs_code",)
                 changes = {}
                 many_to_many = {}
 
@@ -2226,6 +2228,7 @@ def edit_stop(request, pk):
             "stop": stop,
             "request_entry": request_entry,
             "recent_entries": recent_entries,
+            "is_staff": request.user.is_staff,
             "breadcrumb": [
                 stop.get_region(),
                 stop.admin_area,
