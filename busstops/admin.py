@@ -1,10 +1,13 @@
 import csv
 import re
+import logging
 from datetime import timedelta
 from functools import lru_cache
 from io import BytesIO, StringIO
 from itertools import pairwise
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 import requests
 from django import forms
@@ -6366,7 +6369,7 @@ class ServiceAdmin(GISModelAdmin):
         instructions.append(["", ""])
         instructions.append(["Column A", "ATCO codes or CRS codes for stops (one per row)"])
         instructions.append(["", "Enter the ATCO code for bus stops or CRS code for train stations"])
-        instructions.append(["", "Must match existing stops in the database"])
+        instructions.append(["", "CRS codes will automatically create missing stations from Railfeed API"])
         instructions.append(["", ""])
         instructions.append(["Columns B+", "Each column represents one trip/journey"])
         instructions.append(["", "Enter departure times in HH:MM or HHMM format"])
@@ -6383,10 +6386,127 @@ class ServiceAdmin(GISModelAdmin):
 
         return workbook
 
+    def _fetch_railfeed_station(self, crs_code):
+        """Fetch station data from Railfeed API for a given CRS code."""
+        try:
+            response = requests.get(
+                f"https://api.railfeed.co.uk/api/station_info",
+                params={"crs": crs_code},
+                timeout=10
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            # Validate response contains required fields
+            if not data or not isinstance(data, dict):
+                return None
+                
+            # Check for required fields
+            if not all(key in data for key in ['crs', 'latitude', 'longitude']):
+                return None
+                
+            # Use display_name if available, fallback to name
+            station_name = data.get('display_name') or data.get('name')
+            if not station_name:
+                return None
+                
+            return {
+                'crs': data['crs'].upper(),
+                'name': station_name,
+                'latitude': float(data['latitude']),
+                'longitude': float(data['longitude']),
+                'tiploc': data.get('tiploc'),
+                'stanox': data.get('stanox'),
+                'description': data.get('description'),
+                'is_passenger_station': data.get('is_passenger_station', True)
+            }
+            
+        except (requests.RequestException, ValueError, KeyError) as e:
+            logger.error(f"Failed to fetch station data for CRS {crs_code}: {e}")
+            return None
+
+    def _get_or_create_station_by_crs(self, crs_code, cache=None):
+        """Get existing station by CRS or create from Railfeed API if missing."""
+        # Normalize CRS code
+        crs_code = crs_code.strip().upper()
+        
+        # Check cache first
+        if cache is not None and crs_code in cache:
+            return cache[crs_code], False
+        
+        # Check database first
+        existing = models.StopPoint.objects.filter(crs_code__iexact=crs_code).first()
+        if existing:
+            if cache is not None:
+                cache[crs_code] = existing
+            return existing, False
+        
+        # Fetch from Railfeed API
+        station_data = self._fetch_railfeed_station(crs_code)
+        if not station_data:
+            return None, False
+        
+        # Get or create default admin area and region for railway stations
+        from .models import Region, AdminArea
+        region, _ = Region.objects.get_or_create(
+            id='GB',
+            defaults={'name': 'Great Britain'}
+        )
+        admin_area, _ = AdminArea.objects.get_or_create(
+            id=999,
+            defaults={
+                'atco_code': '999',
+                'name': 'National Rail',
+                'region': region
+            }
+        )
+        
+        # Create the station
+        from django.contrib.gis.geos import Point
+        latlong = Point(
+            station_data['longitude'],
+            station_data['latitude']
+        )
+        
+        # Generate ATCO code from CRS if not exists
+        atco_code = f"9{station_data['crs']}"
+        
+        # Use select_for_update to handle concurrent imports
+        try:
+            station = models.StopPoint.objects.select_for_update().filter(
+                crs_code__iexact=station_data['crs']
+            ).first()
+            
+            if not station:
+                station = models.StopPoint.objects.create(
+                    atco_code=atco_code,
+                    common_name=station_data['name'][:48],
+                    crs_code=station_data['crs'],
+                    latlong=latlong,
+                    stop_type='RSE',  # Rail station entrance
+                    admin_area=admin_area,
+                    active=True
+                )
+                # Return flag indicating this was a new station
+                if cache is not None:
+                    cache[crs_code] = station
+                return station, True
+        except Exception as e:
+            logger.error(f"Failed to create station for CRS {crs_code}: {e}")
+            return None, False
+        
+        if cache is not None:
+            cache[crs_code] = station
+        return station, False
+
     def _parse_spreadsheet_import(self, service, workbook):
         errors = []
         created_trips = 0
         created_routes = 0
+        created_stations = 0
+        
+        # Cache for station lookups during this import
+        station_cache = {}
 
         sheet_mapping = {
             "Weekdays - Inbound": ("weekdays", True),
@@ -6452,14 +6572,17 @@ class ServiceAdmin(GISModelAdmin):
                     stop_code = worksheet.cell(row=row, column=1).value
                     if stop_code and str(stop_code).strip():
                         stop_code = str(stop_code).strip()
-                        # Try ATCO code first, then CRS code
+                        # Try ATCO code first
                         stop = models.StopPoint.objects.filter(atco_code=stop_code).first()
                         if not stop:
-                            stop = models.StopPoint.objects.filter(crs_code__iexact=stop_code).first()
+                            # Try CRS code lookup with automatic creation
+                            stop, was_created = self._get_or_create_station_by_crs(stop_code, station_cache)
+                            if was_created:
+                                created_stations += 1
                         if stop:
                             stops.append((row, stop))
                         else:
-                            errors.append(f"Unknown stop code '{stop_code}' (tried ATCO and CRS) in {sheet_name} row {row}")
+                            errors.append(f"Unknown stop code '{stop_code}' (tried ATCO and CRS lookup) in {sheet_name} row {row}")
 
                 if not stops:
                     continue
@@ -6521,6 +6644,7 @@ class ServiceAdmin(GISModelAdmin):
         return {
             "created_trips": created_trips,
             "created_routes": created_routes,
+            "created_stations": created_stations,
             "errors": errors,
         }
 
@@ -6542,17 +6666,15 @@ class ServiceAdmin(GISModelAdmin):
                     result = self._parse_spreadsheet_import(service, loaded_workbook)
 
                     if result["errors"]:
-                        self.message_user(
-                            request,
-                            f"Import completed with {len(result['errors'])} errors. Created {result['created_trips']} trips, {result['created_routes']} routes.",
-                            level=messages.WARNING,
-                        )
+                        message = f"Import completed with {len(result['errors'])} errors. Created {result['created_trips']} trips, {result['created_routes']} routes."
+                        if result.get('created_stations', 0) > 0:
+                            message += f" Created {result['created_stations']} new stations from Railfeed API."
+                        self.message_user(request, message, level=messages.WARNING)
                     else:
-                        self.message_user(
-                            request,
-                            f"Import successful! Created {result['created_trips']} trips, {result['created_routes']} routes.",
-                            level=messages.SUCCESS,
-                        )
+                        message = f"Import successful! Created {result['created_trips']} trips, {result['created_routes']} routes."
+                        if result.get('created_stations', 0) > 0:
+                            message += f" Created {result['created_stations']} new stations from Railfeed API."
+                        self.message_user(request, message, level=messages.SUCCESS)
                 except Exception as exc:
                     form.add_error("workbook", f"Error processing workbook: {exc}")
         else:
