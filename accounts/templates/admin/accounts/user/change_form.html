@@ -4,6 +4,11 @@
 {% block object-tools-items %}
     {{ block.super }}
     <li>
+        <a href="{% url 'admin:accounts_user_change_password' object_id %}" class="button">
+            Change password
+        </a>
+    </li>
+    <li>
         <a href="{% url 'admin:accounts_user_bypass_new_account_restriction' object_id %}" class="button">
             Push account creation time back 1 hour (remove new account restriction)
         </a>

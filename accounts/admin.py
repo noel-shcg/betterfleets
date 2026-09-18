@@ -5,6 +5,9 @@ from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.urls import reverse, path
 from django.utils.html import format_html
+from django.contrib.auth.forms import AdminPasswordChangeForm
+from django.shortcuts import get_object_or_404, render
+from django.contrib import messages
 from sql_util.utils import SubqueryCount
 
 from .models import APIKey, OperatorUser, ProfileTag, User, DriverStatusRequest
@@ -67,11 +70,15 @@ class UserAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.bypass_new_account_restriction),
                 name="accounts_user_bypass_new_account_restriction",
             ),
+            path(
+                "<path:object_id>/change-password/",
+                self.admin_site.admin_view(self.user_change_password),
+                name="accounts_user_change_password",
+            ),
         ]
         return custom_urls + urls
 
     def bypass_new_account_restriction(self, request, object_id):
-        from django.shortcuts import get_object_or_404
         import datetime
 
         user = get_object_or_404(User, pk=object_id)
@@ -81,6 +88,34 @@ class UserAdmin(admin.ModelAdmin):
         return HttpResponseRedirect(
             reverse("admin:accounts_user_change", args=[object_id])
         )
+
+    def user_change_password(self, request, object_id):
+        user = get_object_or_404(User, pk=object_id)
+        
+        if request.method == "POST":
+            form = AdminPasswordChangeForm(user, request.POST)
+            if form.is_valid():
+                form.save()
+                messages.success(request, f"Password changed for {user.username}")
+                return HttpResponseRedirect(
+                    reverse("admin:accounts_user_change", args=[object_id])
+                )
+        else:
+            form = AdminPasswordChangeForm(user)
+        
+        context = {
+            "form": form,
+            "user": user,
+            "title": f"Change password: {user.username}",
+            "opts": self.model._meta,
+            "is_popup": False,
+            "save_as": False,
+            "has_delete_permission": False,
+            "has_change_permission": True,
+            "has_add_permission": False,
+            "has_view_permission": True,
+        }
+        return render(request, "admin/accounts/user/change_password.html", context)
 
     def _has_blocked_from_reviews_field(self):
         try:

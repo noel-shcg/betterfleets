@@ -1,5 +1,4 @@
 from django.conf import settings
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -86,7 +85,22 @@ def account_email(request):
 @login_required
 def account_password(request):
     """Password change page."""
-    return render(request, 'account/password.html')
+    from django.contrib import messages
+    
+    form = forms.PasswordChangeForm(
+        request.POST or None,
+        user=request.user,
+    )
+    
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Your password has been changed successfully.")
+        # Update the session hash to prevent the user from being logged out
+        from django.contrib.auth import update_session_auth_hash
+        update_session_auth_hash(request, request.user)
+        return redirect('account_password')
+    
+    return render(request, 'account/password.html', {'form': form})
 
 
 @login_required

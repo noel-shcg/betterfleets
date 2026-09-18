@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.forms import PasswordChangeForm as DjangoPasswordChangeForm
 from django.contrib.auth.models import Permission
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.exceptions import ValidationError
@@ -12,6 +13,7 @@ from django.forms import (
     Form,
     ModelForm,
     ModelMultipleChoiceField,
+    PasswordInput,
 )
 
 from .models import ProfileTag, User
@@ -118,3 +120,41 @@ class UserPermissionsForm(Form):
 
 class DeleteForm(Form):
     confirm_delete = BooleanField(label="Please delete my account")
+
+
+class PasswordChangeForm(Form):
+    old_password = CharField(
+        label="Current password",
+        widget=PasswordInput,
+    )
+    new_password1 = CharField(
+        label="New password",
+        widget=PasswordInput,
+    )
+    new_password2 = CharField(
+        label="Confirm new password",
+        widget=PasswordInput,
+    )
+
+    def __init__(self, data=None, user=None, **kwargs):
+        super().__init__(data, **kwargs)
+        self.user = user
+
+    def clean_old_password(self):
+        old_password = self.cleaned_data.get("old_password")
+        if not self.user.check_password(old_password):
+            raise ValidationError("Your current password is incorrect.")
+        return old_password
+
+    def clean_new_password2(self):
+        new_password1 = self.cleaned_data.get("new_password1")
+        new_password2 = self.cleaned_data.get("new_password2")
+        if new_password1 and new_password2 and new_password1 != new_password2:
+            raise ValidationError("The two password fields didn't match.")
+        return new_password2
+
+    def save(self):
+        password = self.cleaned_data["new_password1"]
+        self.user.set_password(password)
+        self.user.save()
+        return self.user
