@@ -184,6 +184,8 @@ class ServiceSerializer(serializers.ModelSerializer):
             "public_use",
             "is_rail_replacement",
             "train_operator",
+            "primary_logo",
+            "secondary_logo",
             "modified_at",
         ]
 

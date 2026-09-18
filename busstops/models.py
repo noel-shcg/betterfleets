@@ -1395,6 +1395,21 @@ class Service(models.Model):
         help_text="The train operator this service is covering for.",
     )
 
+    primary_logo = models.FileField(
+        upload_to="services/primary-logos",
+        blank=True,
+        null=True,
+        validators=logo_file_validators,
+        help_text="Upload an SVG, PNG, JPG, JPEG, or WebP logo up to 256 KB.",
+    )
+    secondary_logo = models.FileField(
+        upload_to="services/secondary-logos",
+        blank=True,
+        null=True,
+        validators=logo_file_validators,
+        help_text="Upload an SVG, PNG, JPG, JPEG, or WebP logo up to 256 KB.",
+    )
+
     objects = ServiceManager()
     update_search_vector = SearchMixin.update_search_vector
 
