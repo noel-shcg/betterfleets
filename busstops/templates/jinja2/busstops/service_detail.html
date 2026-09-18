@@ -38,7 +38,7 @@
     {% endif %}
     {% if object.secondary_logo %}
         <span class="secondary-logo">
-            <img src="{{ object.secondary_logo.url }}" alt="{{ object.get_line_name() }}">
+            <img src="{{ object.secondary_logo.url }}" alt="{{ object.get_line_name() }}" style="max-width: 40px; max-height: 40px; object-fit: contain; margin-left: 8px;">
         </span>
     {% endif %}
     </span>
