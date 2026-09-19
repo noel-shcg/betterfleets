@@ -93,20 +93,26 @@
 {% endifchanged %}
     <li>
         <a href="{{ service.get_absolute_url }}">
-            <span class="names">
-                {% for line_name in service.get_line_names %}
-                    {% if line_name and line_name not in service.line_brand %}
-                        {% if ' ' not in line_name or line_name not in service.description %}
-                            <strong class="name{% if ' ' not in line_name %} is-short{% endif %}{% if service.colour %} colour colour-{{ service.colour|slice:'1:' }}{% endif %}">
-                                {{ line_name }}
-                            </strong>
+            {% if service.primary_logo %}
+                <span class="logo" style="display: inline-flex; align-items: center; justify-content: center; width: 50px; height: 50px; border-radius: 8px; {% if service.colour %}background: {{ service.colour }};{% endif %} padding: 4px; margin-right: 16px;">
+                    <img src="{{ service.primary_logo.url }}" alt="{{ service.get_line_name }}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                </span>
+            {% else %}
+                <span class="names">
+                    {% for line_name in service.get_line_names %}
+                        {% if line_name and line_name not in service.line_brand %}
+                            {% if ' ' not in line_name or line_name not in service.description %}
+                                <strong class="name{% if ' ' not in line_name %} is-short{% endif %}{% if service.colour %} colour colour-{{ service.colour|slice:'1:' }}{% endif %}">
+                                    {{ line_name }}
+                                </strong>
+                            {% endif %}
                         {% endif %}
+                    {% endfor %}
+                    {% if service.line_brand %}
+                        <strong class="name{% if service.colour %} colour colour-{{ service.colour|slice:'1:' }}{% endif %}">{{ service.line_brand }}</strong>
                     {% endif %}
-                {% endfor %}
-                {% if service.line_brand %}
-                    <strong class="name{% if service.colour %} colour colour-{{ service.colour|slice:'1:' }}{% endif %}">{{ service.line_brand }}</strong>
-                {% endif %}
-            </span>
+                </span>
+            {% endif %}
             <span class="description">
                 {{ service.description }}{% if request.user.is_authenticated %} {% if not service.route_is_public %}<span title="Non-public route" aria-label="Non-public route">-</span>{% elif service.route_ridden %}<span title="Route ridden" aria-label="Route ridden">&#10003;</span>{% else %}<span title="Route not yet ridden" aria-label="Route not yet ridden">&#10007;</span>{% endif %}{% endif %}
             </span>
