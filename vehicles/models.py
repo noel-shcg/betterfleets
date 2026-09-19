@@ -1368,7 +1368,6 @@ class VehicleRevision(models.Model):
         app_label = "vehicles"
         permissions = [
             ("approve_vehiclerevision", "Can approve vehicle revision"),
-            ("change_vehiclerevision", "Can change vehicle revision"),
         ]
         constraints = [
             UniqueConstraint(

@@ -16,7 +16,6 @@ class Migration(migrations.Migration):
                 'app_label': 'vehicles',
                 'permissions': [
                     ('approve_vehiclerevision', 'Can approve vehicle revision'),
-                    ('change_vehiclerevision', 'Can change vehicle revision'),
                 ],
                 'constraints': [
                     {'fields': ['vehicle', 'to_operator'], 'name': 'unique_pending_operator', 'condition': {'pending': True}},
