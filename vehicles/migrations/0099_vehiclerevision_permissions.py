@@ -17,13 +17,6 @@ class Migration(migrations.Migration):
                 'permissions': [
                     ('approve_vehiclerevision', 'Can approve vehicle revision'),
                 ],
-                'constraints': [
-                    {'fields': ['vehicle', 'to_operator'], 'name': 'unique_pending_operator', 'condition': {'pending': True}},
-                    {'fields': ['vehicle', 'to_operated_by'], 'name': 'unique_pending_operated_by', 'condition': {'pending': True}},
-                    {'fields': ['vehicle', 'to_type'], 'name': 'unique_pending_type', 'condition': {'pending': True}},
-                    {'fields': ['vehicle', 'to_livery'], 'name': 'unique_pending_livery', 'condition': {'pending': True}},
-                    {'fields': ['vehicle', 'to_garage'], 'name': 'unique_pending_garage', 'condition': {'pending': True}},
-                ],
             },
         ),
     ]

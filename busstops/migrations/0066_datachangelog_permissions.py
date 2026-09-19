@@ -1,6 +1,6 @@
 # Generated manually for permission changes
 
-from django.db import migrations
+from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
@@ -17,10 +17,6 @@ class Migration(migrations.Migration):
                 'permissions': [
                     ('approve_datachangelog', 'Can approve data change log'),
                     ('reject_datachangelog', 'Can reject data change log'),
-                ],
-                'indexes': [
-                    ('busstops_data_status_target_model_idx', ['status', 'target_model']),
-                    ('busstops_data_source_created_at_idx', ['source', 'created_at']),
                 ],
             },
         ),

@@ -21,11 +21,6 @@ class Migration(migrations.Migration):
                     ('reject_request', 'Can reject request'),
                     ('change_request_status', 'Can change request status'),
                 ],
-                'indexes': [
-                    ('service_requests_request_status_idx', ['status']),
-                    ('service_requests_request_category_idx', ['category']),
-                    ('service_requests_request_created_at_idx', ['created_at']),
-                ],
             },
         ),
     ]
