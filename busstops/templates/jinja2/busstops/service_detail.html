@@ -23,25 +23,31 @@
 {% block content %}
 
 <h1 class="service-header">
-    <span class="names">
-    {% for line_name in object.get_line_names() %}
-        {% if line_name and line_name not in object.line_brand %}
-            {% if ' ' not in line_name or line_name not in object.description %}
-                <strong class="name{% if ' ' not in line_name %} is-short{% endif %}{% if object.colour %} colour colour-{{ object.colour[1:] }}{% endif %}">
-                    {{ line_name }}
-                </strong>
+    {% if object.primary_logo %}
+        <span class="logo" style="display: inline-flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 8px; {% if object.colour %}background: {{ object.colour }}; color: {{ object.get_colour_foreground() }};{% endif %} padding: 4px;">
+            <img src="{{ object.primary_logo.url }}" alt="{{ object.get_line_name() }}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+        </span>
+    {% else %}
+        <span class="names">
+        {% for line_name in object.get_line_names() %}
+            {% if line_name and line_name not in object.line_brand %}
+                {% if ' ' not in line_name or line_name not in object.description %}
+                    <strong class="name{% if ' ' not in line_name %} is-short{% endif %}{% if object.colour %} colour colour-{{ object.colour[1:] }}{% endif %}">
+                        {{ line_name }}
+                    </strong>
+                {% endif %}
             {% endif %}
+        {% endfor %}
+        {% if object.line_brand %}
+            <strong class="name{% if object.colour %} colour colour-{{ object.colour[1:] }}{% endif %}">{{ object.line_brand }}</strong>
         {% endif %}
-    {% endfor %}
-    {% if object.line_brand %}
-        <strong class="name{% if object.colour %} colour colour-{{ object.colour[1:] }}{% endif %}">{{ object.line_brand }}</strong>
+        </span>
     {% endif %}
     {% if object.secondary_logo %}
         <span class="secondary-logo" style="display: inline-flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 8px; {% if object.colour %}background: {{ object.colour }}; color: {{ object.get_colour_foreground() }};{% endif %} padding: 4px; margin-left: 8px;">
             <img src="{{ object.secondary_logo.url }}" alt="{{ object.get_line_name() }}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
         </span>
     {% endif %}
-    </span>
     <span class="description">{{ object.description }} {% if request.user.is_authenticated %}{% if not route_is_public %}<span title="Non-public route" aria-label="Non-public route">-</span>{% elif route_ridden %}<span title="Route ridden" aria-label="Route ridden">&#10003;</span>{% else %}<span title="Route not yet ridden" aria-label="Route not yet ridden">&#10007;</span>{% endif %}{% endif %}</span>
 </h1>
 
