@@ -115,6 +115,11 @@ class Request(models.Model):
             ("approve_request", "Can approve request"),
             ("reject_request", "Can reject request"),
             ("change_request_status", "Can change request status"),
+            ("approve_photo_request", "Can approve photo request"),
+            ("approve_vehicle_request", "Can approve vehicle request"),
+            ("approve_service_request", "Can approve service request"),
+            ("approve_vehicle_type_request", "Can approve vehicle type request"),
+            ("approve_operator_request", "Can approve operator request"),
         ]
         indexes = [
             models.Index(fields=["status"]),

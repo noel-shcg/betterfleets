@@ -186,7 +186,20 @@ def add_comment(request, request_id):
 @login_required
 def change_status(request, request_id):
     """Change the status of a request (requires permission)."""
-    if not request.user.has_perm("service_requests.change_request_status") and not request.user.is_superuser:
+    req = get_object_or_404(Request, id=request_id)
+
+    # Check category-specific permissions
+    permission_map = {
+        RequestCategory.PHOTO: "service_requests.approve_photo_request",
+        RequestCategory.VEHICLE: "service_requests.approve_vehicle_request",
+        RequestCategory.SERVICE: "service_requests.approve_service_request",
+        RequestCategory.VEHICLE_TYPE: "service_requests.approve_vehicle_type_request",
+        RequestCategory.OPERATOR: "service_requests.approve_operator_request",
+    }
+
+    required_permission = permission_map.get(req.category, "service_requests.approve_request")
+
+    if not request.user.has_perm(required_permission) and not request.user.is_superuser:
         messages.error(request, "You don't have permission to change request status.")
         return redirect("service_requests:detail", id=request_id)
     

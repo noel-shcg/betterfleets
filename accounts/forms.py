@@ -117,6 +117,11 @@ class UserPermissionsForm(Form):
                 "approve_request",
                 "reject_request",
                 "change_request_status",
+                "approve_photo_request",
+                "approve_vehicle_request",
+                "approve_service_request",
+                "approve_vehicle_type_request",
+                "approve_operator_request",
             )
         ).select_related("content_type")
         self.fields["blocked_from_reviews"].initial = user.blocked_from_reviews

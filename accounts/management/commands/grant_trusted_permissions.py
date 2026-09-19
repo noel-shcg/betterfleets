@@ -44,6 +44,26 @@ class Command(BaseCommand):
                     codename='change_request_status',
                     content_type=service_requests_content_type
                 ),
+                Permission.objects.get(
+                    codename='approve_photo_request',
+                    content_type=service_requests_content_type
+                ),
+                Permission.objects.get(
+                    codename='approve_vehicle_request',
+                    content_type=service_requests_content_type
+                ),
+                Permission.objects.get(
+                    codename='approve_service_request',
+                    content_type=service_requests_content_type
+                ),
+                Permission.objects.get(
+                    codename='approve_vehicle_type_request',
+                    content_type=service_requests_content_type
+                ),
+                Permission.objects.get(
+                    codename='approve_operator_request',
+                    content_type=service_requests_content_type
+                ),
             ]
 
             # Get all trusted users

@@ -50,6 +50,26 @@ def manage_trusted_user_permissions(sender, instance, created, **kwargs):
                 codename='change_request_status',
                 content_type=service_requests_content_type
             ),
+            Permission.objects.get(
+                codename='approve_photo_request',
+                content_type=service_requests_content_type
+            ),
+            Permission.objects.get(
+                codename='approve_vehicle_request',
+                content_type=service_requests_content_type
+            ),
+            Permission.objects.get(
+                codename='approve_service_request',
+                content_type=service_requests_content_type
+            ),
+            Permission.objects.get(
+                codename='approve_vehicle_type_request',
+                content_type=service_requests_content_type
+            ),
+            Permission.objects.get(
+                codename='approve_operator_request',
+                content_type=service_requests_content_type
+            ),
         ]
 
         if instance.trusted:
@@ -100,59 +120,3 @@ def update_score_on_review_delete(sender, instance, **kwargs):
     """
     if instance.user:
         update_user_score(instance.user)
-
-
-@receiver(post_save, sender="accounts.User")
-def manage_trusted_user_permissions(sender, instance, created, **kwargs):
-    """
-    Automatically grant/remove approval permissions based on trusted status.
-    """
-    try:
-        # Get the content types for the models we need permissions for
-        from busstops.models import DataChangeLog
-        from vehicles.models import VehicleRevision
-        from service_requests.models import Request
-
-        busstops_content_type = ContentType.objects.get_for_model(DataChangeLog)
-        vehicles_content_type = ContentType.objects.get_for_model(VehicleRevision)
-        service_requests_content_type = ContentType.objects.get_for_model(Request)
-
-        # Approval permissions to manage
-        approval_permissions = [
-            Permission.objects.get(
-                codename='approve_datachangelog',
-                content_type=busstops_content_type
-            ),
-            Permission.objects.get(
-                codename='reject_datachangelog',
-                content_type=busstops_content_type
-            ),
-            Permission.objects.get(
-                codename='approve_vehiclerevision',
-                content_type=vehicles_content_type
-            ),
-            Permission.objects.get(
-                codename='approve_request',
-                content_type=service_requests_content_type
-            ),
-            Permission.objects.get(
-                codename='reject_request',
-                content_type=service_requests_content_type
-            ),
-            Permission.objects.get(
-                codename='change_request_status',
-                content_type=service_requests_content_type
-            ),
-        ]
-
-        if instance.trusted:
-            # Grant approval permissions
-            for permission in approval_permissions:
-                instance.user_permissions.add(permission)
-        else:
-            # Remove approval permissions
-            for permission in approval_permissions:
-                instance.user_permissions.remove(permission)
-    except Exception as e:
-        # Silently fail if models or permissions don't exist yet
-        pass

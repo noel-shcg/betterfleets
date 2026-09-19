@@ -2880,6 +2880,18 @@ def create_request_log(
         and source in TRUSTED_REQUEST_APPROVAL_SOURCES
         and (user.has_perm("busstops.approve_datachangelog") or user.is_superuser)
     )
+
+    # Additional category-specific auto-approval for requests
+    if auto_approve and source == "photo_suggestion":
+        auto_approve = user.has_perm("service_requests.approve_photo_request") or user.is_superuser
+    elif auto_approve and source == "vehicle_request":
+        auto_approve = user.has_perm("service_requests.approve_vehicle_request") or user.is_superuser
+    elif auto_approve and source == "service_request":
+        auto_approve = user.has_perm("service_requests.approve_service_request") or user.is_superuser
+    elif auto_approve and source == "vehicle_type_request":
+        auto_approve = user.has_perm("service_requests.approve_vehicle_type_request") or user.is_superuser
+    elif auto_approve and source == "operator_request":
+        auto_approve = user.has_perm("service_requests.approve_operator_request") or user.is_superuser
     if auto_approve:
         status = DataChangeLog.STATUS_APPLIED
 
@@ -2924,8 +2936,19 @@ def can_apply_request_log(user, log):
         return False
     if user.is_superuser:
         return True
-    # Check for Django permission to approve data change logs
-    if not user.has_perm("busstops.approve_datachangelog"):
+
+    # Check category-specific permissions
+    permission_map = {
+        "photo_suggestion": "service_requests.approve_photo_request",
+        "vehicle_request": "service_requests.approve_vehicle_request",
+        "service_request": "service_requests.approve_service_request",
+        "vehicle_type_request": "service_requests.approve_vehicle_type_request",
+        "operator_request": "service_requests.approve_operator_request",
+    }
+
+    required_permission = permission_map.get(log.source, "busstops.approve_datachangelog")
+
+    if not user.has_perm(required_permission):
         return False
     return log.source in TRUSTED_REQUEST_APPROVAL_SOURCES
 
