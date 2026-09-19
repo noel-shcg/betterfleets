@@ -185,8 +185,8 @@ def add_comment(request, request_id):
 
 @login_required
 def change_status(request, request_id):
-    """Change the status of a request (admin/staff only)."""
-    if not request.user.is_staff:
+    """Change the status of a request (requires permission)."""
+    if not request.user.has_perm("service_requests.change_request_status") and not request.user.is_superuser:
         messages.error(request, "You don't have permission to change request status.")
         return redirect("service_requests:detail", id=request_id)
     

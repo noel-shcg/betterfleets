@@ -461,6 +461,10 @@ class DataChangeLog(models.Model):
 
     class Meta:
         ordering = ("-created_at", "-id")
+        permissions = [
+            ("approve_datachangelog", "Can approve data change log"),
+            ("reject_datachangelog", "Can reject data change log"),
+        ]
         indexes = [
             models.Index(fields=("status", "target_model")),
             models.Index(fields=("source", "created_at")),

@@ -111,6 +111,11 @@ class Request(models.Model):
         ordering = ("-created_at",)
         verbose_name = "request"
         verbose_name_plural = "requests"
+        permissions = [
+            ("approve_request", "Can approve request"),
+            ("reject_request", "Can reject request"),
+            ("change_request_status", "Can change request status"),
+        ]
         indexes = [
             models.Index(fields=["status"]),
             models.Index(fields=["category"]),

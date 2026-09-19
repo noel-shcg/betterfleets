@@ -111,6 +111,12 @@ class UserPermissionsForm(Form):
                 "change_vehiclerevision",
                 "change_vehicle",
                 "use_beta_features",
+                "approve_datachangelog",
+                "reject_datachangelog",
+                "approve_vehiclerevision",
+                "approve_request",
+                "reject_request",
+                "change_request_status",
             )
         ).select_related("content_type")
         self.fields["blocked_from_reviews"].initial = user.blocked_from_reviews

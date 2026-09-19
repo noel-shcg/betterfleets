@@ -2874,11 +2874,11 @@ def create_request_log(
     many_to_many=None,
     status=None,
 ):
-    # Auto-approve vehicle requests from trusted users
+    # Auto-approve requests from users with approval permission
     auto_approve = (
         status is None
-        and source == "vehicle_request"
-        and getattr(user, "trusted", False)
+        and source in TRUSTED_REQUEST_APPROVAL_SOURCES
+        and (user.has_perm("busstops.approve_datachangelog") or user.is_superuser)
     )
     if auto_approve:
         status = DataChangeLog.STATUS_APPLIED
@@ -2924,7 +2924,8 @@ def can_apply_request_log(user, log):
         return False
     if user.is_superuser:
         return True
-    if not getattr(user, "trusted", False):
+    # Check for Django permission to approve data change logs
+    if not user.has_perm("busstops.approve_datachangelog"):
         return False
     return log.source in TRUSTED_REQUEST_APPROVAL_SOURCES
 
@@ -4775,7 +4776,9 @@ def vehicle_revision_action(request, revision_id, action):
         # Allow superusers to approve their own requests
         if request.user.id == revision.user_id and not request.user.is_superuser:
             raise PermissionDenied("You cannot approve your own request.")
-        assert request.user.trusted or request.user.is_superuser
+        # Check for Django permission to approve vehicle revisions
+        if not request.user.has_perm("vehicles.approve_vehiclerevision") and not request.user.is_superuser:
+            raise PermissionDenied("You don't have permission to approve vehicle revisions.")
 
     revision.disapproved_reason = unquote(request.headers.get("HX-Prompt", ""))
     revision.approved_by = request.user
