@@ -35,6 +35,8 @@ class Command(BaseCommand):
                 headers=headers,
                 json={
                     "external_id": str(user.pk),
+                    # This Clerk instance requires usernames alongside email.
+                    "username": f"user{user.pk}",
                     "email_address": [user.email],
                     "first_name": user.first_name,
                     "last_name": user.last_name,
