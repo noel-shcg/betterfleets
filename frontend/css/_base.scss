@@ -274,9 +274,58 @@ body {
 
     .clerk-auth-controls {
         display: inline-flex;
-        gap: .5rem;
         align-items: center;
+        gap: 0.5rem;
     }
+
+    .clerk-auth-error {
+        color: var(--secondary-text-color);
+        max-width: 32rem;
+    }
+
+    .clerk-auth-page,
+    .clerk-account-page {
+        display: grid;
+        gap: 1.5rem;
+        justify-items: center;
+        width: 100%;
+    }
+
+    .clerk-account-page {
+        justify-items: stretch;
+    }
+
+    .clerk-account-page__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .clerk-account-page__eyebrow {
+        margin: 0 0 0.25rem;
+        color: var(--secondary-text-color);
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .clerk-account-page__header h1,
+    .clerk-account-page__header p:last-child {
+        margin-top: 0;
+    }
+
+    .clerk-account-page__header p:last-child {
+        margin-bottom: 0;
+        color: var(--secondary-text-color);
+    }
+
+    #clerk-account-root {
+        min-height: 38rem;
+    }
+
 }
 
 .search {
