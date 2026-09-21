@@ -307,22 +307,6 @@ window.STADIA_MAPS_API_KEY = "";
                 </svg>
             </a></li>
             <li><div id="clerk-auth-root"></div></li>
-            {% if request.user.is_authenticated %}
-                <li><a href="{{ url('account_dashboard') }}" class="header-icon profile-button" title="Profile">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="12" cy="7" r="4"></circle>
-                    </svg>
-                </a></li>
-            {% else %}
-                <li><a href="{{ url('account_login') }}?next={{ request.get_full_path()|urlencode }}" class="header-icon profile-button" title="Sign in">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
-                        <polyline points="10 17 15 12 10 7"></polyline>
-                        <line x1="15" y1="12" x2="3" y2="12"></line>
-                    </svg>
-                </a></li>
-            {% endif %}
         </ul>
     </div>
 </header>
@@ -337,22 +321,6 @@ window.STADIA_MAPS_API_KEY = "";
 {% block footer %}
 <footer class="site-footer">
     <div class="site-footer__inner">
-        {% if request.user.is_authenticated %}
-            <div class="site-footer__meta">
-                <form action="{{ url('account_logout') }}" method="POST" class="site-footer__account">
-                    <ul class="site-footer__links">
-                        <li><a href="{{ url('user_detail', args=[request.user.id]) }}">{{ request.user.get_display_name() }}</a></li>
-                        {% if request.user.trusted %}
-                            <li><a href="/vehicles/edits?status=pending">Pending edits</a></li>
-                        {% endif %}
-                        <li><a href="/requests">Requests</a></li>
-                        {% if request.user.is_superuser %}
-                            <li><a href="/fleet/import">Fleet import</a></li>
-                        {% endif %}
-                    </ul>
-                </form>
-            </div>
-        {% endif %}
         <div class="site-footer__meta">
             <ul class="site-footer__links">
                 <li><a href="/blog">Blog</a></li>
