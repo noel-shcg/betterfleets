@@ -200,7 +200,10 @@ def change_status(request, request_id):
     required_permission = permission_map.get(req.category, "service_requests.approve_request")
 
     if not request.user.has_perm(required_permission) and not request.user.is_superuser:
-        messages.error(request, "You don't have permission to change request status.")
+        messages.error(
+            request,
+            "Only users with the appropriate permissions can approve or change the status of this request.",
+        )
         return redirect("service_requests:detail", id=request_id)
     
     req = get_object_or_404(Request, id=request_id)

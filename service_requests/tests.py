@@ -46,7 +46,7 @@ class RequestModelTests(TestCase):
         from .forms import RequestForm
         from vehicles.models import Vehicle, VehicleType, Livery
         from busstops.models import Operator, Service
-        
+
         # Test vehicle request without vehicle or fleet number/registration
         form = RequestForm(data={
             'title': 'Vehicle Request',
@@ -55,6 +55,27 @@ class RequestModelTests(TestCase):
         })
         self.assertFalse(form.is_valid())
         self.assertIn('Vehicle requests must specify', str(form.errors))
+
+    def test_photo_request_requires_vehicle_and_url(self):
+        """Photo requests should require both a vehicle and a Flickr URL."""
+        from .forms import RequestForm
+
+        form = RequestForm(data={
+            'title': 'Photo Request',
+            'description': 'Test',
+            'category': RequestCategory.PHOTO,
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('Photo requests must include a Flickr URL', str(form.errors))
+
+        form = RequestForm(data={
+            'title': 'Photo Request',
+            'description': 'Test',
+            'category': RequestCategory.PHOTO,
+            'photo_url': 'https://www.flickr.com/photos/example/123456789',
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('Photo requests must specify the vehicle', str(form.errors))
 
 
 class RequestViewTests(TestCase):

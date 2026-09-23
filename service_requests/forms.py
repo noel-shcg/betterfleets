@@ -13,7 +13,7 @@ class RequestForm(forms.ModelForm):
         fields = [
             "title", "description", "category", "vehicle", "service",
             "operator", "vehicle_type", "livery", "fleet_number",
-            "registration", "route", "expected_behaviour"
+            "registration", "route", "expected_behaviour", "photo_url"
         ]
         widgets = {
             "title": forms.TextInput(attrs={"class": "input", "placeholder": "Request title"}),
@@ -28,6 +28,10 @@ class RequestForm(forms.ModelForm):
                 "rows": 3,
                 "placeholder": "What behaviour do you expect?"
             }),
+            "photo_url": forms.URLInput(attrs={
+                "class": "input",
+                "placeholder": "https://www.flickr.com/..."
+            }),
         }
     
     def __init__(self, *args, **kwargs):
@@ -39,7 +43,7 @@ class RequestForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         category = cleaned_data.get("category")
-        
+
         # Validate required fields based on category
         if category == RequestCategory.VEHICLE:
             if not cleaned_data.get("vehicle") and not (
@@ -73,7 +77,16 @@ class RequestForm(forms.ModelForm):
                 raise forms.ValidationError(
                     "Feature requests should describe expected behaviour."
                 )
-        
+        elif category == RequestCategory.PHOTO:
+            if not cleaned_data.get("photo_url"):
+                raise forms.ValidationError(
+                    "Photo requests must include a Flickr URL."
+                )
+            if not cleaned_data.get("vehicle"):
+                raise forms.ValidationError(
+                    "Photo requests must specify the vehicle the photo relates to."
+                )
+
         return cleaned_data
 
 
