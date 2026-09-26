@@ -8,7 +8,6 @@ import {
   useUser,
   useClerk,
 } from "@clerk/react";
-<<<<<<< HEAD
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
