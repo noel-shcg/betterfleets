@@ -278,6 +278,10 @@ body {
         gap: 0.5rem;
     }
 
+    .clerk-login-status {
+        margin: 0.5rem 0;
+    }
+
     .clerk-auth-error {
         color: var(--secondary-text-color);
         max-width: 32rem;
