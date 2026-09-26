@@ -19,8 +19,8 @@ def clerk_config(request):
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("accounts/", include("allauth.urls")),
     path("accounts/", include("accounts.urls")),
+    path("accounts/", include("allauth.urls")),
     path("clerk/config/", clerk_config, name="clerk_config"),
     path("api/", include(api.router.urls)),
     path("tools/", include("tools.urls")),

@@ -5,6 +5,9 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    path("login/", views.clerk_login, name="clerk_login"),
+    path("signup/", views.clerk_signup, name="clerk_signup"),
+    path("logout/", views.clerk_logout, name="clerk_logout"),
     path("discord-link/", views.discord_link, name="discord_link"),
     path("request-driver-status/", views.request_driver_status, name="request_driver_status"),
     path("users/<int:pk>/driver-stats/", views.driver_stats, name="driver_stats"),

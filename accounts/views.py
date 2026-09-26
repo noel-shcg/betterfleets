@@ -20,6 +20,37 @@ from .notifications import notify_new_user
 UserModel = get_user_model()
 
 
+def clerk_login(request):
+    return render(
+        request,
+        "account/login.html",
+        {"clerk_redirect_url": _safe_clerk_redirect(request)},
+    )
+
+
+def clerk_signup(request):
+    return render(
+        request,
+        "account/signup.html",
+        {"clerk_redirect_url": _safe_clerk_redirect(request)},
+    )
+
+
+def clerk_logout(request):
+    return render(request, "account/logout.html", {"clerk_redirect_url": "/"})
+
+
+def _safe_clerk_redirect(request):
+    next_url = request.GET.get("next", "/")
+    if url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return next_url
+    return "/"
+
+
 @login_required
 def account_dashboard(request):
     """Account dashboard with profile overview and quick actions."""
