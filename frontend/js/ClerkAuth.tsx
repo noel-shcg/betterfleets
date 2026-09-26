@@ -70,7 +70,7 @@ function MissingClerkConfiguration() {
   );
 }
 
-function AccountIcon({ add = false }: { add?: boolean }) {
+function AccountIcon() {
   return (
     <svg
       aria-hidden="true"
@@ -86,7 +86,6 @@ function AccountIcon({ add = false }: { add?: boolean }) {
     >
       <circle cx="12" cy="8" r="4" />
       <path d="M5 20c.8-3.2 3.1-5 7-5s6.2 1.8 7 5" />
-      {add ? <path d="M19 8v6M16 11h6" /> : null}
     </svg>
   );
 }
@@ -94,13 +93,13 @@ function AccountIcon({ add = false }: { add?: boolean }) {
 function SignedOutControls() {
   return (
     <span className="clerk-auth-controls">
-      <a href="/accounts/login/" className="site-header__account-link">
+      <a
+        href="/accounts/login/"
+        className="site-header__account-link"
+        aria-label="Sign in"
+        title="Sign in"
+      >
         <AccountIcon />
-        <span>Sign in</span>
-      </a>
-      <a href="/accounts/signup/" className="site-header__account-link">
-        <AccountIcon add />
-        <span>Sign up</span>
       </a>
     </span>
   );
@@ -156,11 +155,8 @@ function AuthControls() {
       </Show>
       <Show when="signed-in">
         <span className="clerk-auth-controls">
-          <a href="/accounts/dashboard/" className="site-header__account-link">
-            <AccountIcon />
-            <span>Account</span>
-          </a>
           <UserButton
+            appearance={{ elements: { userButtonAvatarBox: "site-header__avatar" } }}
             userProfileMode="navigation"
             userProfileUrl="/accounts/dashboard/"
           />

@@ -292,12 +292,19 @@ window.STADIA_MAPS_API_KEY = "";
     <div class="site-header__inner">
         <a href="/" class="site-name">BetterFleets</a>
         <ul class="site-nav__list">
-            <li><a href="/search" class="header-icon" title="Search">
+            <li class="site-header__search">
+                <button type="button" class="header-icon" title="Search" aria-label="Search" aria-expanded="false" aria-controls="site-header-search-form">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="11" cy="11" r="8"></circle>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
-            </a></li>
+                </button>
+                <form id="site-header-search-form" class="site-header__search-form" method="get" action="/search" hidden>
+                    <label for="site-header-search-input">Search</label>
+                    <input id="site-header-search-input" type="search" name="q" placeholder="Search" autocomplete="off">
+                    <button type="submit">Search</button>
+                </form>
+            </li>
             <li><a href="/map" class="header-icon" title="Map">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
@@ -369,6 +376,27 @@ window.STADIA_MAPS_API_KEY = "";
 </script>
 
 <script src="{{ static('dist/js/clerk-auth-entry.js') }}"></script>
+
+<script>
+(function () {
+    var search = document.querySelector(".site-header__search");
+    var toggle = search && search.querySelector("button[aria-controls]");
+    var form = document.getElementById("site-header-search-form");
+    var input = document.getElementById("site-header-search-input");
+    if (!toggle || !form || !input) {
+        return;
+    }
+
+    toggle.addEventListener("click", function () {
+        var open = form.hidden;
+        form.hidden = !open;
+        toggle.setAttribute("aria-expanded", String(open));
+        if (open) {
+            input.focus();
+        }
+    });
+})();
+</script>
 
 {% block foot %}{% endblock %}
 
