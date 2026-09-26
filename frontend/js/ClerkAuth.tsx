@@ -8,10 +8,58 @@ import {
   useUser,
   useClerk,
 } from "@clerk/react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-const publishableKey = process.env.VITE_CLERK_PUBLISHABLE_KEY;
+const buildTimePublishableKey = process.env.VITE_CLERK_PUBLISHABLE_KEY || "";
+let publishableKeyPromise: Promise<string> | undefined;
+
+function loadPublishableKey() {
+  if (buildTimePublishableKey) {
+    return Promise.resolve(buildTimePublishableKey);
+  }
+
+  publishableKeyPromise ??= fetch("/clerk/config/")
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`Unable to load Clerk configuration (${response.status})`);
+      }
+      return response.json() as Promise<{ publishableKey?: string }>;
+    })
+    .then((config) => config.publishableKey || "");
+
+  return publishableKeyPromise;
+}
+
+function usePublishableKey() {
+  const [publishableKey, setPublishableKey] = useState<string>();
+  const [configurationError, setConfigurationError] = useState<Error>();
+
+  useEffect(() => {
+    let active = true;
+    void loadPublishableKey()
+      .then((key) => {
+        if (active) {
+          setPublishableKey(key);
+        }
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setConfigurationError(
+            error instanceof Error
+              ? error
+              : new Error("Unable to load Clerk configuration"),
+          );
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return { configurationError, publishableKey };
+}
 
 function MissingClerkConfiguration() {
   return (
@@ -60,6 +108,14 @@ function LoginStatus() {
 }
 
 function AuthControls() {
+  const { configurationError, publishableKey } = usePublishableKey();
+
+  if (configurationError) {
+    return <MissingClerkConfiguration />;
+  }
+  if (publishableKey === undefined) {
+    return null;
+  }
   if (!publishableKey) {
     return <MissingClerkConfiguration />;
   }
@@ -88,6 +144,14 @@ function AuthControls() {
 export default AuthControls;
 
 export function ClerkSignIn() {
+  const { configurationError, publishableKey } = usePublishableKey();
+
+  if (configurationError) {
+    return <MissingClerkConfiguration />;
+  }
+  if (publishableKey === undefined) {
+    return null;
+  }
   if (!publishableKey) {
     return <MissingClerkConfiguration />;
   }
@@ -103,6 +167,14 @@ export function ClerkSignIn() {
 }
 
 export function ClerkSignUp() {
+  const { configurationError, publishableKey } = usePublishableKey();
+
+  if (configurationError) {
+    return <MissingClerkConfiguration />;
+  }
+  if (publishableKey === undefined) {
+    return null;
+  }
   if (!publishableKey) {
     return <MissingClerkConfiguration />;
   }
@@ -118,6 +190,14 @@ export function ClerkSignUp() {
 }
 
 export function ClerkAccount() {
+  const { configurationError, publishableKey } = usePublishableKey();
+
+  if (configurationError) {
+    return <MissingClerkConfiguration />;
+  }
+  if (publishableKey === undefined) {
+    return null;
+  }
   if (!publishableKey) {
     return <MissingClerkConfiguration />;
   }
@@ -140,6 +220,14 @@ function ClerkSignOutAction() {
 }
 
 export function ClerkSignOut() {
+  const { configurationError, publishableKey } = usePublishableKey();
+
+  if (configurationError) {
+    return <MissingClerkConfiguration />;
+  }
+  if (publishableKey === undefined) {
+    return null;
+  }
   if (!publishableKey) {
     return <MissingClerkConfiguration />;
   }

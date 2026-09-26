@@ -8,6 +8,7 @@ RUN npm ci
 COPY frontend /app/frontend
 COPY .parcelrc tsconfig.json /app/
 RUN npm run lint && npm run build
+RUN test -s /app/busstops/static/dist/js/clerk-auth-entry.js
 
 
 FROM ghcr.io/bustimes/bustimes.org/bustimes-base:3.14
@@ -27,7 +28,7 @@ RUN python -m playwright install chromium
 
 COPY --from=0 /app/node_modules/htmx.org/dist /app/node_modules/htmx.org/dist
 COPY --from=0 /app/node_modules/reqwest/reqwest.min.js /app/node_modules/reqwest/
-COPY --from=0 /app/busstops/static /app/busstops/static
+COPY --from=0 /app/busstops/static/dist /app/busstops/static/dist
 COPY . /app/
 
 ENV PORT=8000 STATIC_ROOT=/staticfiles
