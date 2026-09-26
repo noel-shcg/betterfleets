@@ -5,9 +5,11 @@ import {
   UserProfile,
   Show,
   UserButton,
+  useUser,
   useClerk,
 } from "@clerk/react";
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 
 const publishableKey = process.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -23,9 +25,37 @@ function MissingClerkConfiguration() {
 function SignedOutControls() {
   return (
     <span className="clerk-auth-controls">
-      <a href="/accounts/login/" className="button">Sign in</a>
+      <a href="/accounts/login/" className="button">Account</a>
       <a href="/accounts/signup/" className="button">Sign up</a>
     </span>
+  );
+}
+
+function LoginStatus() {
+  const { isLoaded, isSignedIn, user } = useUser();
+
+  if (!isLoaded) {
+    return null;
+  }
+
+  if (!isSignedIn || !user) {
+    return (
+      <p className="clerk-login-status">
+        <a href="/accounts/login/">Sign in</a> to access your account.
+      </p>
+    );
+  }
+
+  const displayName =
+    user.primaryEmailAddress?.emailAddress ||
+    user.username ||
+    user.firstName ||
+    "your account";
+
+  return (
+    <p className="clerk-login-status">
+      Signed in as <a href="/accounts/dashboard/">{displayName}</a>.
+    </p>
   );
 }
 
@@ -34,14 +64,23 @@ function AuthControls() {
     return <MissingClerkConfiguration />;
   }
 
+  const footerElement = document.getElementById("clerk-login-status-root");
+
   return (
     <ClerkProvider publishableKey={publishableKey}>
       <Show when="signed-out">
         <SignedOutControls />
       </Show>
       <Show when="signed-in">
-        <UserButton userProfileMode="navigation" userProfileUrl="/accounts/dashboard/" />
+        <span className="clerk-auth-controls">
+          <a href="/accounts/dashboard/" className="button">Account</a>
+          <UserButton
+            userProfileMode="navigation"
+            userProfileUrl="/accounts/dashboard/"
+          />
+        </span>
       </Show>
+      {footerElement ? createPortal(<LoginStatus />, footerElement) : null}
     </ClerkProvider>
   );
 }
