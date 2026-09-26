@@ -12,13 +12,12 @@
     .site-header { background: var(--brand-color); position: relative; overflow: hidden; }
     .site-header a { color: var(--header-text-color); padding: 16px; line-height: 1; display: inline-block; }
     .site-header a:hover { background-color: var(--brand-color-darker); text-decoration: none; }
-    .site-header div { margin: 0 auto; }
-    .narrow .site-header div { width: 47.5em; }
-    .wide .site-header div { width: 62.5em; }
-    .site-header div .site-name { position: absolute; }
-    .site-header ul { float: right; margin: 0; }
-    .site-header ul li { display: inline; }
-    .site-header ul a { padding: 1em 1em 1em .5em; line-height: 1.5em; }
+    .site-header__inner { margin: 0 auto; }
+    .narrow .site-header__inner { width: 47.5em; }
+    .wide .site-header__inner { width: 62.5em; }
+    .site-header ul { margin: 0 0 0 auto; }
+    .site-header ul li { display: flex; }
+    .site-header ul a { padding: .75rem; line-height: 1.5em; }
     .site-header .header-icon svg { vertical-align: middle; }
     .site-header .search { float: right; }
     .site-header .search label { padding: 16px; line-height: 1.5; display: block; }
@@ -290,9 +289,9 @@ window.STADIA_MAPS_API_KEY = "";
 <a href="#content" class="skip">Skip to main content</a>
 {% block header %}
 <header class="site-header">
-    <div>
+    <div class="site-header__inner">
         <a href="/" class="site-name">BetterFleets</a>
-        <ul>
+        <ul class="site-nav__list">
             <li><a href="/search" class="header-icon" title="Search">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="11" cy="11" r="8"></circle>
@@ -330,7 +329,7 @@ window.STADIA_MAPS_API_KEY = "";
                 <li><a href="/privacy">Privacy policy</a></li>
                 <li><a href="/rules">Rules & FAQ</a></li>
                 <li><a href="https://discord.gg/QfmMuYH88Q">Discord</a></li>
-                <li><div id="clerk-login-status-root"></div></li>
+                <li class="clerk-login-status-item"><div id="clerk-login-status-root"></div></li>
                 {% if ad %}<li><a href="javascript:window.__tcfapi('displayConsentUi',2,function(){})">Privacy settings</a></li>{% endif %}
                 <li>
                     <label class="theme-switcher" for="site-theme-select">

@@ -70,11 +70,38 @@ function MissingClerkConfiguration() {
   );
 }
 
+function AccountIcon({ add = false }: { add?: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className="clerk-control-icon"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="8" r="4" />
+      <path d="M5 20c.8-3.2 3.1-5 7-5s6.2 1.8 7 5" />
+      {add ? <path d="M19 8v6M16 11h6" /> : null}
+    </svg>
+  );
+}
+
 function SignedOutControls() {
   return (
     <span className="clerk-auth-controls">
-      <a href="/accounts/login/" className="button">Account</a>
-      <a href="/accounts/signup/" className="button">Sign up</a>
+      <a href="/accounts/login/" className="site-header__account-link">
+        <AccountIcon />
+        <span>Sign in</span>
+      </a>
+      <a href="/accounts/signup/" className="site-header__account-link">
+        <AccountIcon add />
+        <span>Sign up</span>
+      </a>
     </span>
   );
 }
@@ -88,9 +115,9 @@ function LoginStatus() {
 
   if (!isSignedIn || !user) {
     return (
-      <p className="clerk-login-status">
+      <span className="clerk-login-status">
         <a href="/accounts/login/">Sign in</a> to access your account.
-      </p>
+      </span>
     );
   }
 
@@ -101,9 +128,9 @@ function LoginStatus() {
     "your account";
 
   return (
-    <p className="clerk-login-status">
+    <span className="clerk-login-status">
       Signed in as <a href="/accounts/dashboard/">{displayName}</a>.
-    </p>
+    </span>
   );
 }
 
@@ -129,7 +156,10 @@ function AuthControls() {
       </Show>
       <Show when="signed-in">
         <span className="clerk-auth-controls">
-          <a href="/accounts/dashboard/" className="button">Account</a>
+          <a href="/accounts/dashboard/" className="site-header__account-link">
+            <AccountIcon />
+            <span>Account</span>
+          </a>
           <UserButton
             userProfileMode="navigation"
             userProfileUrl="/accounts/dashboard/"

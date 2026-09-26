@@ -194,43 +194,44 @@ body {
         font-size: 24px;
     }
 
-    div,
     .site-header__inner {
+        align-items: center;
+        display: flex;
         margin: 0 auto;
+        min-height: 3.5rem;
 
         .site-name {
-            position: absolute;
+            flex: 0 0 auto;
         }
     }
 
     ul {
-        float: right;
+        align-items: center;
+        display: flex;
+        flex: 0 1 auto;
+        gap: .25rem;
         margin: 0;
+        margin-left: auto;
+        white-space: nowrap;
 
         li {
-            display: inline;
+            display: flex;
         }
 
         a {
             line-height: 1.5em;
-            padding: 1em;
-            padding-left: .5em;
+            padding: .75rem;
         }
 
-        .site-header__cta {
-            margin: .55rem .75rem .55rem .25rem;
-            padding: .7rem 1rem;
-            border-radius: 999px;
-            background: color-mix(in srgb, var(--button-background) 88%, var(--background-color));
-            color: var(--button-foreground);
-            box-shadow: 0 10px 24px color-mix(in srgb, var(--button-background) 24%, transparent);
-            font-weight: 700;
-            letter-spacing: .01em;
+        .site-header__account-link {
+            align-items: center;
+            display: inline-flex;
+            gap: .35rem;
+            padding: .55rem .7rem;
+        }
 
-            &:hover,
-            &:focus {
-                background: var(--button-background);
-            }
+        .clerk-control-icon {
+            flex: 0 0 auto;
         }
     }
 
@@ -266,20 +267,28 @@ body {
     }
 
     #clerk-auth-root {
-        float: right;
-        margin-left: 1rem;
-        display: flex;
         align-items: center;
+        display: flex;
+        flex: 0 0 auto;
+        margin-left: .25rem;
     }
 
     .clerk-auth-controls {
         display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: .15rem;
+        white-space: nowrap;
     }
 
     .clerk-login-status {
-        margin: 0.5rem 0;
+        display: inline;
+        margin: 0;
+        white-space: nowrap;
+    }
+
+    .clerk-login-status-item {
+        align-items: center;
+        display: flex;
     }
 
     .clerk-auth-error {
@@ -292,6 +301,20 @@ body {
         display: grid;
         gap: 1.5rem;
         justify-items: center;
+        width: 100%;
+    }
+
+    .clerk-auth-page {
+        align-items: start;
+        justify-items: center;
+        padding: 2rem 0;
+    }
+
+    #clerk-sign-in-root,
+    #clerk-sign-up-root,
+    #clerk-sign-out-root {
+        display: flex;
+        justify-content: center;
         width: 100%;
     }
 
@@ -327,7 +350,10 @@ body {
     }
 
     #clerk-account-root {
+        display: flex;
+        justify-content: center;
         min-height: 38rem;
+        width: 100%;
     }
 
 }
