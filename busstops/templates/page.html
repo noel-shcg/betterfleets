@@ -285,33 +285,6 @@ window.STADIA_MAPS_API_KEY = "{{ STADIA_MAPS_API_KEY|default_if_none:''|escapejs
 </script>
 
 {% block head %}
-<style>
-    .site-name { line-height: 1.5em !important; font-size: 24px; }
-    .site-header { background: var(--brand-color); position: relative; overflow: hidden; }
-    .site-header a { color: var(--header-text-color); padding: 16px; line-height: 1; display: inline-block; }
-    .site-header a:hover { background-color: var(--brand-color-darker); text-decoration: none; }
-    .site-header__inner { margin: 0 auto; }
-    .narrow .site-header__inner { width: 47.5em; }
-    .wide .site-header__inner { width: 62.5em; }
-    .site-header ul { margin: 0 0 0 auto; }
-    .site-header ul li { display: flex; }
-    .site-header ul a { padding: .75rem; line-height: 1.5em; }
-    .site-header .header-icon svg { vertical-align: middle; }
-    .site-header .search { float: right; }
-    .site-header .search label { padding: 16px; line-height: 1.5; display: block; }
-    .site-header .search label input { z-index: 1; border-radius: 0; margin: 0; position: absolute; top: -48px; }
-    .site-header .search label input:focus { border-width: 12px 16px; width: 100%; top: 0; left: 0; }
-    .site-header .search label + input { display: none; }
-    .site-header ul + .search label { padding-right: 8px; }
-    @media (width >= 30em) {
-        .site-header .search { padding-right: 1em; position: relative; top: .7em; }
-        .site-header .search label { float: left; width: 8em; padding: 0; position: relative; }
-        .site-header .search input[type="search"] { border: 1px solid var(--brand-color-darker); border-top-left-radius: .5em; border-bottom-left-radius: .5em; width: 100%; top: 0; left: 0; }
-        .site-header .search label input:focus { border-width: 1px; }
-        .site-header .search input[type="submit"] { background: var(--brand-color-darker); border: 1px solid var(--brand-color-darker); float: right; border-top-left-radius: 0; border-bottom-left-radius: 0; margin: 0; display: block; top: 0; }
-        .site-header ul + .search { padding-right: .5em; }
-    }
-</style>
 {% endblock %}
 
 {% block fuse %}
