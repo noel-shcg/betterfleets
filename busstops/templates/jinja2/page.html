@@ -333,8 +333,11 @@ window.STADIA_MAPS_API_KEY = "";
                 <li><a href="/contact">Contact</a></li>
                 <li><a href="/data">Data sources</a></li>
                 <li><a href="/status">Status</a></li>
-                <li><a href="/vehicles/edits?status=approved">Changelog</a></li>
+                {% if request.user.is_authenticated and (request.user.trusted or request.user.is_superuser) %}
                 <li><a href="/vehicles/edits?status=pending">Pending edits</a></li>
+                {% else %}
+                <li><a href="/vehicles/edits?status=approved">Changelog</a></li>
+                {% endif %}
                 <li><a href="/privacy">Privacy policy</a></li>
                 <li><a href="/rules">Rules & FAQ</a></li>
                 <li><a href="https://discord.gg/QfmMuYH88Q">Discord</a></li>
