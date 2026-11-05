@@ -97,6 +97,24 @@ class OperatorAdminMassAddTests(TestCase):
         self.assertContains(response, "Mass add buses")
         self.assertContains(response, "Download XLSX template")
 
+    def test_operator_change_page_has_fleet_import_and_export_buttons(self):
+        self.client.force_login(self.superuser)
+        response = self.client.get(
+            f"/admin/busstops/operator/{self.operator.pk}/change/"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Import fleet (XLSX)")
+        self.assertContains(response, "Export fleet (XLSX)")
+
+    def test_staff_operator_change_page_does_not_show_fleet_write_buttons(self):
+        self.client.force_login(self.staff_user)
+        response = self.client.get(
+            f"/admin/busstops/operator/{self.operator.pk}/change/"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Import fleet (XLSX)")
+        self.assertNotContains(response, "Export fleet (XLSX)")
+
     def test_superuser_can_download_mass_add_template(self):
         self.client.force_login(self.superuser)
         response = self.client.get(self.mass_add_template_url())

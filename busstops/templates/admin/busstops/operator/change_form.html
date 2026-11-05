@@ -5,6 +5,14 @@
         <li>
             <a href="{% url 'admin:vehicles_vehicle_add' %}?operator={{ original.pk|urlencode }}" class="addlink">Add vehicle</a>
         </li>
+        {% if user.is_superuser %}
+            <li>
+                <a href="{% url 'admin:busstops_operator_mass_add_buses' original.pk %}">Import fleet (XLSX)</a>
+            </li>
+            <li>
+                <a href="{% url 'admin:busstops_operator_mass_add_buses_current_fleet' original.pk %}">Export fleet (XLSX)</a>
+            </li>
+        {% endif %}
     {% endif %}
     {{ block.super }}
 {% endblock object-tools-items %}
